@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { ProgressStatus } from '../types';
@@ -14,6 +14,31 @@ export default function ReviewSession() {
   const [finished, setFinished] = useState(false);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [status, setStatus] = useState<ProgressStatus | null>(null);
+  const [statusLoaded, setStatusLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setStatusLoaded(true);
+      return;
+    }
+    setStatusLoaded(false);
+    supabase
+      .from('progress')
+      .select('status')
+      .eq('user_id', user.id)
+      .eq('card_id', card.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        setStatus(data?.status ?? null);
+        setStatusLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, card.id]);
 
   const items = useMemo(() => {
     if (card.type === 'association') {
@@ -22,9 +47,10 @@ export default function ReviewSession() {
     return parseRecitation(card.content).map((l) => ({ prompt: l.text, answer: l.text }));
   }, [card]);
 
-  async function markStatus(status: ProgressStatus) {
+  async function markStatus(newStatus: ProgressStatus) {
     if (!user) return;
     setSaving(true);
+    setActionError(null);
     try {
       const { data: existing } = await supabase
         .from('progress')
@@ -37,17 +63,24 @@ export default function ReviewSession() {
         {
           user_id: user.id,
           card_id: card.id,
-          status,
+          status: newStatus,
           last_reviewed_at: new Date().toISOString(),
           review_count: (existing?.review_count ?? 0) + 1,
         },
         { onConflict: 'user_id,card_id' },
       );
+      setStatus(newStatus);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Erreur réseau.');
     } finally {
       setSaving(false);
     }
+  }
+
+  function restart() {
+    setIndex(0);
+    setRevealed(false);
+    setFinished(false);
   }
 
   function next() {
@@ -63,26 +96,42 @@ export default function ReviewSession() {
 
   if (finished) {
     return (
-      <div className="panel">
-        <p>
+      <div className="panel review-summary">
+        <p className="review-summary-count">
           {card.type === 'association'
             ? `${items.length} paires révisées.`
             : `${items.length} phrases parcourues.`}
         </p>
         {user ? (
+          statusLoaded && (
+            <div className="review-actions">
+              {status !== 'termine' && (
+                <button disabled={saving} onClick={() => markStatus('termine')}>
+                  Marquer "terminé"
+                </button>
+              )}
+              {status !== 'en_cours' && (
+                <button disabled={saving} onClick={() => markStatus('en_cours')}>
+                  Marquer "en cours"
+                </button>
+              )}
+              <button className="button-secondary" disabled={saving} onClick={restart}>
+                🔁 Relancer un cycle de révision
+              </button>
+            </div>
+          )
+        ) : (
           <div className="review-actions">
-            <button disabled={saving} onClick={() => markStatus('termine')}>
-              Marquer "terminé"
-            </button>
-            <button disabled={saving} onClick={() => markStatus('en_cours')}>
-              Marquer "en cours"
+            <p className="hint">Connectez-vous pour enregistrer votre progression.</p>
+            <button className="button-secondary" onClick={restart}>
+              🔁 Relancer un cycle de révision
             </button>
           </div>
-        ) : (
-          <p className="hint">Connectez-vous pour enregistrer votre progression.</p>
         )}
         {actionError && <p className="error">{actionError}</p>}
-        <Link to={`/cards/${card.id}`}>Retour à la carte</Link>
+        <Link className="review-back-link" to={`/cards/${card.id}`}>
+          Retour à la carte
+        </Link>
       </div>
     );
   }
