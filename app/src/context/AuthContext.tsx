@@ -30,9 +30,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function signInWithEmail(email: string) {
+    const redirectTo = new URL(import.meta.env.BASE_URL, window.location.origin).toString();
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: redirectTo },
     });
     return { error: error?.message ?? null };
   }
