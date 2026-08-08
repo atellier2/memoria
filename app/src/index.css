@@ -73,8 +73,10 @@ h1, h2, h3 {
 
 .nav {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 0.6rem 1rem;
   padding: 1.25rem 0;
   margin-bottom: 1.75rem;
 }
@@ -88,6 +90,7 @@ h1, h2, h3 {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  white-space: nowrap;
 }
 
 .nav .brand::before {
@@ -99,18 +102,29 @@ h1, h2, h3 {
   display: flex;
   align-items: center;
   gap: 0.9rem;
+  flex-wrap: wrap;
 }
 
 .nav-actions a {
   color: var(--accent-dark);
   font-weight: 700;
   text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav-actions button {
+  margin: 0;
+  white-space: nowrap;
 }
 
 .nav-user {
   color: var(--muted);
   font-size: 0.9rem;
   font-weight: 600;
+  max-width: 40vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .panel {
