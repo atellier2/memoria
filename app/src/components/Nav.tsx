@@ -12,7 +12,7 @@ export default function Nav() {
       <div className="nav-actions">
         {user ? (
           <>
-            <Link to="/cards/new">Nouvelle card</Link>
+            <Link to="/cards/new">Nouvelle carte</Link>
             <span className="nav-user">{user.email}</span>
             <button onClick={() => signOut()}>Déconnexion</button>
           </>

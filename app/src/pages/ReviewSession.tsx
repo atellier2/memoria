@@ -1,47 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useOutletContext } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import type { Card, ProgressStatus } from '../types';
+import type { ProgressStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { parseAssociation, parseRecitation, shuffle } from '../lib/parseContent';
+import type { CardOutletContext } from './CardPage';
 
 export default function ReviewSession() {
-  const { id } = useParams<{ id: string }>();
+  const { card } = useOutletContext<CardOutletContext>();
   const { user } = useAuth();
-  const [card, setCard] = useState<Card | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [finished, setFinished] = useState(false);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const { data, error } = await supabase.from('cards').select('*').eq('id', id).single();
-        if (cancelled) return;
-        if (error) {
-          setError(error.message);
-        } else {
-          setCard(data as Card);
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Erreur réseau.');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
   const items = useMemo(() => {
-    if (!card) return [];
     if (card.type === 'association') {
       return shuffle(parseAssociation(card.content)).map((p) => ({ prompt: p.front, answer: p.back }));
     }
@@ -49,7 +23,7 @@ export default function ReviewSession() {
   }, [card]);
 
   async function markStatus(status: ProgressStatus) {
-    if (!user || !card) return;
+    if (!user) return;
     setSaving(true);
     try {
       const { data: existing } = await supabase
@@ -85,15 +59,11 @@ export default function ReviewSession() {
     }
   }
 
-  if (loading) return <p>Chargement…</p>;
-  if (error) return <p className="error">{error}</p>;
-  if (!card) return <p>Card introuvable.</p>;
-  if (items.length === 0) return <p>Cette card n'a pas encore de contenu à réviser.</p>;
+  if (items.length === 0) return <p>Cette carte n'a pas encore de contenu à réviser.</p>;
 
   if (finished) {
     return (
       <div className="panel">
-        <h2>Session terminée</h2>
         <p>
           {card.type === 'association'
             ? `${items.length} paires révisées.`
@@ -112,7 +82,26 @@ export default function ReviewSession() {
           <p className="hint">Connectez-vous pour enregistrer votre progression.</p>
         )}
         {actionError && <p className="error">{actionError}</p>}
-        <Link to={`/cards/${card.id}`}>Retour à la card</Link>
+        <Link to={`/cards/${card.id}`}>Retour à la carte</Link>
+      </div>
+    );
+  }
+
+  if (card.type === 'recitation') {
+    const shown = items.slice(0, index + 1);
+    return (
+      <div className="panel">
+        <p className="hint">
+          {index + 1} / {items.length}
+        </p>
+        <div className="review-text">
+          {shown.map((item, i) => (
+            <p key={i} className={i === index ? 'review-line-current' : 'review-line-done'}>
+              {item.prompt}
+            </p>
+          ))}
+        </div>
+        <button onClick={next}>{index + 1 >= items.length ? 'Terminer' : 'Suivant'}</button>
       </div>
     );
   }
@@ -121,15 +110,14 @@ export default function ReviewSession() {
 
   return (
     <div className="panel">
-      <h2>{card.title}</h2>
       <p className="hint">
         {index + 1} / {items.length}
       </p>
       <div className="review-card">
         <p className="review-prompt">{current.prompt}</p>
-        {revealed && card.type === 'association' && <p className="review-answer">{current.answer}</p>}
+        {revealed && <p className="review-answer">{current.answer}</p>}
       </div>
-      {card.type === 'association' && !revealed ? (
+      {!revealed ? (
         <button onClick={() => setRevealed(true)}>Révéler</button>
       ) : (
         <button onClick={next}>{index + 1 >= items.length ? 'Terminer' : 'Suivant'}</button>
