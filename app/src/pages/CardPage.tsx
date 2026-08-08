@@ -48,10 +48,10 @@ export default function CardPage() {
       <h2>{card.title}</h2>
       <nav className="mode-tabs">
         <NavLink to={`/cards/${card.id}`} end>
-          Visualiser
+          👁️ Visualiser
         </NavLink>
-        <NavLink to={`/cards/${card.id}/edit`}>Éditer</NavLink>
-        <NavLink to={`/cards/${card.id}/review`}>Réviser</NavLink>
+        <NavLink to={`/cards/${card.id}/edit`}>✏️ Éditer</NavLink>
+        <NavLink to={`/cards/${card.id}/review`}>🎯 Réviser</NavLink>
       </nav>
       <Outlet context={{ card, setCard } satisfies CardOutletContext} />
     </div>

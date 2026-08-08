@@ -80,7 +80,7 @@ export default function CardsList() {
                   {card.type === 'association' ? 'Association' : 'Récitation'}
                 </span>
                 <span className="badge">{card.lang}</span>
-                <span className="badge">{card.difficulty}</span>
+                <span className={`badge badge-difficulty-${card.difficulty}`}>{card.difficulty}</span>
                 {status && (
                   <span className={`badge badge-status-${status}`}>
                     {status === 'termine' ? 'Terminé' : 'En cours'}
