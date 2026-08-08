@@ -65,8 +65,8 @@ export default function CardsList() {
 
   return (
     <div>
-      <h2>Cards</h2>
-      {cards.length === 0 && <p>Aucune card pour l'instant.</p>}
+      <h2>Cartes</h2>
+      {cards.length === 0 && <p>Aucune carte pour l'instant.</p>}
       <ul className="card-list">
         {cards.map((card) => {
           const status = progressByCard[card.id]?.status;

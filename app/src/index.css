@@ -152,6 +152,45 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.mode-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.mode-tabs a {
+  padding: 0.5rem 0.25rem;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+
+.mode-tabs a.active {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+
+.view-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.view-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.view-table td:first-child {
+  font-weight: 600;
+  width: 40%;
+}
+
+.view-text p {
+  margin: 0.5rem 0;
+  line-height: 1.5;
+}
+
 .badge {
   font-size: 0.75rem;
   padding: 0.15rem 0.5rem;
@@ -209,4 +248,25 @@ button:disabled {
 .review-actions {
   display: flex;
   gap: 0.75rem;
+}
+
+.review-text {
+  padding: 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
+.review-text p {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+
+.review-line-done {
+  color: var(--muted);
+}
+
+.review-line-current {
+  color: var(--fg);
+  font-weight: 600;
 }
