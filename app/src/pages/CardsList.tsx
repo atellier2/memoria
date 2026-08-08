@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import type { Card, Progress } from '../types';
+import type { Card, CardType, Progress } from '../types';
 import { useAuth } from '../context/AuthContext';
+
+type TypeFilter = 'all' | CardType;
 
 export default function CardsList() {
   const { user } = useAuth();
@@ -10,6 +12,7 @@ export default function CardsList() {
   const [progressByCard, setProgressByCard] = useState<Record<string, Progress>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
 
   useEffect(() => {
     let cancelled = false;
@@ -60,15 +63,45 @@ export default function CardsList() {
     };
   }, [user]);
 
+  const filteredCards = useMemo(
+    () => (typeFilter === 'all' ? cards : cards.filter((card) => card.type === typeFilter)),
+    [cards, typeFilter],
+  );
+
   if (loading) return <p>Chargement…</p>;
   if (error) return <p className="error">{error}</p>;
 
   return (
     <div>
       <h2>Cartes</h2>
-      {cards.length === 0 && <p>Aucune carte pour l'instant.</p>}
+      <div className="mode-tabs" role="group" aria-label="Filtrer par type">
+        <button
+          type="button"
+          className={typeFilter === 'all' ? 'active' : ''}
+          onClick={() => setTypeFilter('all')}
+        >
+          Toutes
+        </button>
+        <button
+          type="button"
+          className={typeFilter === 'association' ? 'active' : ''}
+          onClick={() => setTypeFilter('association')}
+        >
+          Association
+        </button>
+        <button
+          type="button"
+          className={typeFilter === 'recitation' ? 'active' : ''}
+          onClick={() => setTypeFilter('recitation')}
+        >
+          Récitation
+        </button>
+      </div>
+      {filteredCards.length === 0 && (
+        <p>{cards.length === 0 ? "Aucune carte pour l'instant." : 'Aucune carte de ce type.'}</p>
+      )}
       <ul className="card-list">
-        {cards.map((card) => {
+        {filteredCards.map((card) => {
           const status = progressByCard[card.id]?.status;
           return (
             <li key={card.id} className="card-list-item">
@@ -80,7 +113,7 @@ export default function CardsList() {
                   {card.type === 'association' ? 'Association' : 'Récitation'}
                 </span>
                 <span className="badge">{card.lang}</span>
-                <span className="badge">{card.difficulty}</span>
+                <span className={`badge badge-difficulty-${card.difficulty}`}>{card.difficulty}</span>
                 {status && (
                   <span className={`badge badge-status-${status}`}>
                     {status === 'termine' ? 'Terminé' : 'En cours'}
