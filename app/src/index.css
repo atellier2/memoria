@@ -383,6 +383,58 @@ button:disabled {
   line-height: 1.6;
 }
 
+.deck-piles {
+  display: flex;
+  gap: 2.25rem;
+  align-items: flex-end;
+}
+
+.deck-pile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.deck-pile-stack {
+  position: relative;
+  width: 46px;
+  height: 34px;
+}
+
+.deck-pile-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.5rem;
+  background: var(--accent-soft);
+  border: 2px solid var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.deck-pile-card-done {
+  background: var(--green-soft);
+  border-color: var(--green);
+}
+
+.deck-pile-card-empty {
+  border: 2px dashed var(--border);
+  background: none;
+  box-shadow: none;
+}
+
+.deck-pile-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.review-requeue {
+  display: block;
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  padding: 0.5rem 1.1rem;
+}
+
 .review-card {
   text-align: center;
   padding: 2.5rem 1.5rem;
