@@ -20,6 +20,53 @@ function buildPairs(content: string): Pair[] {
   return parseAssociation(content).map((p, i) => ({ id: i, prompt: p.front, answer: p.back }));
 }
 
+const ICON_PROPS = {
+  viewBox: '0 0 24 24',
+  width: 16,
+  height: 16,
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 2.4,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+};
+
+function IconFlip() {
+  return (
+    <svg {...ICON_PROPS}>
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+    </svg>
+  );
+}
+
+function IconArrowRight() {
+  return (
+    <svg {...ICON_PROPS}>
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <polyline points="12 5 19 12 12 19" />
+    </svg>
+  );
+}
+
+function IconCheck() {
+  return (
+    <svg {...ICON_PROPS}>
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function IconUndo() {
+  return (
+    <svg {...ICON_PROPS} width={13} height={13}>
+      <polyline points="9 14 4 9 9 4" />
+      <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+    </svg>
+  );
+}
+
 function DeckPile({ count, label, variant }: { count: number; label: string; variant?: 'done' }) {
   const layers = Math.min(count, 4);
   return (
@@ -292,7 +339,7 @@ export default function ReviewSession() {
               aria-label="Remettre la carte précédente dans la pile"
               title="Remettre la carte précédente dans la pile"
             >
-              ↩️
+              <IconUndo />
             </button>
           )}
           <p className="review-prompt">{current.prompt}</p>
@@ -308,7 +355,7 @@ export default function ReviewSession() {
             aria-label={!revealed ? 'Révéler la réponse' : isLastCard ? 'Terminer' : 'Carte suivante'}
             title={!revealed ? 'Révéler la réponse' : isLastCard ? 'Terminer' : 'Carte suivante'}
           >
-            {!revealed ? '🔄' : isLastCard ? '✓' : '→'}
+            {!revealed ? <IconFlip /> : isLastCard ? <IconCheck /> : <IconArrowRight />}
           </button>
         </div>
       </div>
