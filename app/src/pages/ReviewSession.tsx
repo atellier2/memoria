@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { ProgressStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { parseAssociation, parseRecitation, shuffle } from '../lib/parseContent';
 import type { CardOutletContext } from './CardPage';
+
+const SWIPE_THRESHOLD = 80;
+const FLING_DISTANCE = 500;
+const FLING_DURATION = 200;
 
 interface Pair {
   id: number;
@@ -14,6 +18,53 @@ interface Pair {
 
 function buildPairs(content: string): Pair[] {
   return parseAssociation(content).map((p, i) => ({ id: i, prompt: p.front, answer: p.back }));
+}
+
+const ICON_PROPS = {
+  viewBox: '0 0 24 24',
+  width: 16,
+  height: 16,
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 2.4,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+};
+
+function IconFlip() {
+  return (
+    <svg {...ICON_PROPS}>
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+    </svg>
+  );
+}
+
+function IconArrowRight() {
+  return (
+    <svg {...ICON_PROPS}>
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <polyline points="12 5 19 12 12 19" />
+    </svg>
+  );
+}
+
+function IconCheck() {
+  return (
+    <svg {...ICON_PROPS}>
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function IconUndo() {
+  return (
+    <svg {...ICON_PROPS} width={13} height={13}>
+      <polyline points="9 14 4 9 9 4" />
+      <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+    </svg>
+  );
 }
 
 function DeckPile({ count, label, variant }: { count: number; label: string; variant?: 'done' }) {
@@ -50,6 +101,7 @@ export default function ReviewSession() {
 
   const [queue, setQueue] = useState<Pair[]>(() => (isAssociation ? shuffle(buildPairs(card.content)) : []));
   const [doneStack, setDoneStack] = useState<Pair[]>([]);
+  const [requeueTarget, setRequeueTarget] = useState<Pair | null>(null);
   const recitationLines = useMemo(() => (isAssociation ? [] : parseRecitation(card.content)), [isAssociation, card.content]);
   const [index, setIndex] = useState(0);
 
@@ -59,6 +111,10 @@ export default function ReviewSession() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [status, setStatus] = useState<ProgressStatus | null>(null);
   const [statusLoaded, setStatusLoaded] = useState(false);
+
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dragStartX = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -119,9 +175,12 @@ export default function ReviewSession() {
     if (isAssociation) {
       setQueue(shuffle(buildPairs(card.content)));
       setDoneStack([]);
+      setRequeueTarget(null);
     } else {
       setIndex(0);
     }
+    setDragX(0);
+    setDragging(false);
     setRevealed(false);
     setFinished(false);
   }
@@ -137,20 +196,51 @@ export default function ReviewSession() {
 
   function nextAssociationPair() {
     setRevealed(false);
-    const [current, ...rest] = queue;
-    setDoneStack((d) => [...d, current]);
+    setDragX(0);
+    const [completed, ...rest] = queue;
+    setDoneStack((d) => [...d, completed]);
     setQueue(rest);
+    setRequeueTarget(completed);
     if (rest.length === 0) setFinished(true);
   }
 
   function requeuePrevious() {
-    if (doneStack.length === 0) return;
-    const last = doneStack[doneStack.length - 1];
+    if (!requeueTarget) return;
+    const target = requeueTarget;
+    setRequeueTarget(null);
     setDoneStack((d) => d.slice(0, -1));
     setQueue((q) => {
       const insertAt = q.length === 0 ? 0 : 1 + Math.floor(Math.random() * q.length);
-      return [...q.slice(0, insertAt), last, ...q.slice(insertAt)];
+      return [...q.slice(0, insertAt), target, ...q.slice(insertAt)];
     });
+  }
+
+  function handleCardPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (!revealed) return;
+    dragStartX.current = e.clientX;
+    setDragging(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handleCardPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragging) return;
+    setDragX(e.clientX - dragStartX.current);
+  }
+
+  function handleCardPointerUp() {
+    if (!dragging) return;
+    setDragging(false);
+    if (Math.abs(dragX) > SWIPE_THRESHOLD) {
+      const direction = dragX > 0 ? 1 : -1;
+      setDragX(direction * FLING_DISTANCE);
+      window.setTimeout(nextAssociationPair, FLING_DURATION);
+    } else {
+      setDragX(0);
+    }
+  }
+
+  function handleCardClick() {
+    if (!revealed) setRevealed(true);
   }
 
   if (isAssociation && totalCount === 0) return <p>Cette carte n'a pas encore de contenu à réviser.</p>;
@@ -216,6 +306,7 @@ export default function ReviewSession() {
   }
 
   const current = queue[0];
+  const isLastCard = queue.length <= 1;
 
   return (
     <div className="panel">
@@ -223,20 +314,52 @@ export default function ReviewSession() {
         <DeckPile count={queue.length} label="à réviser" />
         <DeckPile count={doneStack.length} label="ok" variant="done" />
       </div>
-      <div className="review-card">
-        <p className="review-prompt">{current.prompt}</p>
-        {revealed && <p className="review-answer">{current.answer}</p>}
+      <div className="review-card-viewport">
+        <div
+          key={current.id}
+          className={`review-card${dragging ? ' review-card-dragging' : ''}`}
+          style={{
+            transform: `translateX(${dragX}px) rotate(${dragX / 18}deg)`,
+            opacity: 1 - Math.min(Math.abs(dragX) / FLING_DISTANCE, 0.7),
+          }}
+          onPointerDown={handleCardPointerDown}
+          onPointerMove={handleCardPointerMove}
+          onPointerUp={handleCardPointerUp}
+          onPointerCancel={handleCardPointerUp}
+          onClick={handleCardClick}
+        >
+          {requeueTarget && (
+            <button
+              type="button"
+              className="review-card-requeue"
+              onClick={(e) => {
+                e.stopPropagation();
+                requeuePrevious();
+              }}
+              aria-label="Remettre la carte précédente dans la pile"
+              title="Remettre la carte précédente dans la pile"
+            >
+              <IconUndo />
+            </button>
+          )}
+          <p className="review-prompt">{current.prompt}</p>
+          {revealed && <p className="review-answer">{current.answer}</p>}
+          <button
+            type="button"
+            className={`review-card-flip${!revealed ? ' review-card-flip-hint' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!revealed) setRevealed(true);
+              else nextAssociationPair();
+            }}
+            aria-label={!revealed ? 'Révéler la réponse' : isLastCard ? 'Terminer' : 'Carte suivante'}
+            title={!revealed ? 'Révéler la réponse' : isLastCard ? 'Terminer' : 'Carte suivante'}
+          >
+            {!revealed ? <IconFlip /> : isLastCard ? <IconCheck /> : <IconArrowRight />}
+          </button>
+        </div>
       </div>
-      {!revealed ? (
-        <button onClick={() => setRevealed(true)}>Révéler</button>
-      ) : (
-        <button onClick={nextAssociationPair}>{queue.length <= 1 ? 'Terminer' : 'Suivant'}</button>
-      )}
-      {doneStack.length > 0 && (
-        <button className="button-secondary review-requeue" onClick={requeuePrevious}>
-          ↩️ Remettre la carte précédente dans la pile
-        </button>
-      )}
+      {revealed && <p className="review-hint-swipe">Glissez la carte ou appuyez sur → pour continuer</p>}
     </div>
   );
 }

@@ -428,19 +428,109 @@ button:disabled {
   color: var(--muted);
 }
 
-.review-requeue {
-  display: block;
-  margin-top: 0.6rem;
-  font-size: 0.85rem;
-  padding: 0.5rem 1.1rem;
+.review-card-viewport {
+  overflow: hidden;
+  border-radius: var(--radius);
+  margin: 1.25rem 0;
 }
 
 .review-card {
+  position: relative;
   text-align: center;
-  padding: 2.5rem 1.5rem;
+  padding: 2.25rem 2.25rem 3.25rem;
   background: var(--bg-alt);
   border-radius: var(--radius);
-  margin: 1.25rem 0;
+  cursor: grab;
+  user-select: none;
+  touch-action: pan-y;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.review-card-dragging {
+  transition: none;
+  cursor: grabbing;
+}
+
+.review-card-flip {
+  position: absolute;
+  right: 0.7rem;
+  bottom: 0.7rem;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  line-height: 1;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  box-shadow: none;
+  opacity: 0.75;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.review-card-flip:hover,
+.review-card-flip:focus-visible {
+  opacity: 1;
+}
+
+.review-card-flip-hint {
+  animation: review-flip-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes review-flip-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .review-card-flip-hint {
+    animation: none;
+  }
+}
+
+.review-card-requeue {
+  position: absolute;
+  left: 0.6rem;
+  top: 0.6rem;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  line-height: 1;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+.review-card-requeue:hover,
+.review-card-requeue:focus-visible {
+  opacity: 1;
+}
+
+.review-hint-swipe {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
 .review-prompt {
