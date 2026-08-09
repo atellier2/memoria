@@ -101,7 +101,6 @@ export default function ReviewSession() {
 
   const [queue, setQueue] = useState<Pair[]>(() => (isAssociation ? shuffle(buildPairs(card.content)) : []));
   const [doneStack, setDoneStack] = useState<Pair[]>([]);
-  const [requeueTarget, setRequeueTarget] = useState<Pair | null>(null);
   const recitationLines = useMemo(() => (isAssociation ? [] : parseRecitation(card.content)), [isAssociation, card.content]);
   const [index, setIndex] = useState(0);
 
@@ -114,6 +113,7 @@ export default function ReviewSession() {
 
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   const dragStartX = useRef(0);
 
   useEffect(() => {
@@ -175,12 +175,12 @@ export default function ReviewSession() {
     if (isAssociation) {
       setQueue(shuffle(buildPairs(card.content)));
       setDoneStack([]);
-      setRequeueTarget(null);
     } else {
       setIndex(0);
     }
     setDragX(0);
     setDragging(false);
+    setIsAnimating(false);
     setRevealed(false);
     setFinished(false);
   }
@@ -194,29 +194,44 @@ export default function ReviewSession() {
     }
   }
 
-  function nextAssociationPair() {
+  // Moves the current pair to the "done" pile and shows the next one.
+  function finalizeAdvance() {
     setRevealed(false);
     setDragX(0);
+    setIsAnimating(false);
     const [completed, ...rest] = queue;
     setDoneStack((d) => [...d, completed]);
     setQueue(rest);
-    setRequeueTarget(completed);
     if (rest.length === 0) setFinished(true);
   }
 
-  function requeuePrevious() {
-    if (!requeueTarget) return;
-    const target = requeueTarget;
-    setRequeueTarget(null);
-    setDoneStack((d) => d.slice(0, -1));
-    setQueue((q) => {
-      const insertAt = q.length === 0 ? 0 : 1 + Math.floor(Math.random() * q.length);
-      return [...q.slice(0, insertAt), target, ...q.slice(insertAt)];
-    });
+  // Puts the current pair back into the "to review" pile (at a random spot
+  // further down) and shows the next one.
+  function finalizeRequeue() {
+    setRevealed(false);
+    setDragX(0);
+    setIsAnimating(false);
+    const [completed, ...rest] = queue;
+    const insertAt = rest.length === 0 ? 0 : 1 + Math.floor(Math.random() * rest.length);
+    setQueue([...rest.slice(0, insertAt), completed, ...rest.slice(insertAt)]);
+  }
+
+  function completeCurrent() {
+    if (dragging || isAnimating) return;
+    setIsAnimating(true);
+    setDragX(FLING_DISTANCE);
+    window.setTimeout(finalizeAdvance, FLING_DURATION);
+  }
+
+  function requeueCurrent() {
+    if (dragging || isAnimating) return;
+    setIsAnimating(true);
+    setDragX(-FLING_DISTANCE);
+    window.setTimeout(finalizeRequeue, FLING_DURATION);
   }
 
   function handleCardPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (!revealed) return;
+    if (!revealed || isAnimating) return;
     dragStartX.current = e.clientX;
     setDragging(true);
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -232,8 +247,9 @@ export default function ReviewSession() {
     setDragging(false);
     if (Math.abs(dragX) > SWIPE_THRESHOLD) {
       const direction = dragX > 0 ? 1 : -1;
+      setIsAnimating(true);
       setDragX(direction * FLING_DISTANCE);
-      window.setTimeout(nextAssociationPair, FLING_DURATION);
+      window.setTimeout(finalizeAdvance, FLING_DURATION);
     } else {
       setDragX(0);
     }
@@ -328,16 +344,17 @@ export default function ReviewSession() {
           onPointerCancel={handleCardPointerUp}
           onClick={handleCardClick}
         >
-          {requeueTarget && (
+          {revealed && (
             <button
               type="button"
               className="review-card-requeue"
+              disabled={isAnimating}
               onClick={(e) => {
                 e.stopPropagation();
-                requeuePrevious();
+                requeueCurrent();
               }}
-              aria-label="Remettre la carte précédente dans la pile"
-              title="Remettre la carte précédente dans la pile"
+              aria-label="Je ne savais pas — remettre dans la pile à réviser"
+              title="Je ne savais pas — remettre dans la pile à réviser"
             >
               <IconUndo />
             </button>
@@ -347,10 +364,12 @@ export default function ReviewSession() {
           <button
             type="button"
             className={`review-card-flip${!revealed ? ' review-card-flip-hint' : ''}`}
+            disabled={isAnimating}
             onClick={(e) => {
               e.stopPropagation();
+              if (isAnimating) return;
               if (!revealed) setRevealed(true);
-              else nextAssociationPair();
+              else completeCurrent();
             }}
             aria-label={!revealed ? 'Révéler la réponse' : isLastCard ? 'Terminer' : 'Carte suivante'}
             title={!revealed ? 'Révéler la réponse' : isLastCard ? 'Terminer' : 'Carte suivante'}
