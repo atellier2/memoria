@@ -102,7 +102,7 @@ export default function ReviewSession() {
   const [queue, setQueue] = useState<Pair[]>(() => (isAssociation ? shuffle(buildPairs(card.content)) : []));
   const [doneStack, setDoneStack] = useState<Pair[]>([]);
   const recitationLines = useMemo(() => (isAssociation ? [] : parseRecitation(card.content)), [isAssociation, card.content]);
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(-1);
 
   const [revealed, setRevealed] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -176,7 +176,7 @@ export default function ReviewSession() {
       setQueue(shuffle(buildPairs(card.content)));
       setDoneStack([]);
     } else {
-      setIndex(0);
+      setIndex(-1);
     }
     setDragX(0);
     setDragging(false);
@@ -265,6 +265,15 @@ export default function ReviewSession() {
   if (finished) {
     return (
       <div className="panel review-summary">
+        {!isAssociation && (
+          <div className="review-text">
+            {recitationLines.map((item, i) => (
+              <p key={i} className="review-line-done">
+                {item.text}
+              </p>
+            ))}
+          </div>
+        )}
         <p className="review-summary-count">
           {isAssociation ? `${totalCount} paires révisées.` : `${totalCount} phrases parcourues.`}
         </p>
@@ -316,7 +325,9 @@ export default function ReviewSession() {
             </p>
           ))}
         </div>
-        <button onClick={nextRecitationLine}>{index + 1 >= recitationLines.length ? 'Terminer' : 'Suivant'}</button>
+        <button onClick={nextRecitationLine}>
+          {index + 1 >= recitationLines.length ? 'Terminer' : 'Afficher la prochaine phrase'}
+        </button>
       </div>
     );
   }
