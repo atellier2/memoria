@@ -88,7 +88,7 @@ export default function CardPage() {
         <NavLink to={`/cards/${card.id}`} end>
           👁️ Visualiser
         </NavLink>
-        <NavLink to={`/cards/${card.id}/edit`}>✏️ Éditer</NavLink>
+        {user && <NavLink to={`/cards/${card.id}/edit`}>✏️ Éditer</NavLink>}
         <NavLink to={`/cards/${card.id}/review`}>🎯 Réviser</NavLink>
       </nav>
       {user && (

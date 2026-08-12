@@ -1,5 +1,4 @@
 export type CardType = 'association' | 'recitation';
-export type Difficulty = 'facile' | 'moyen' | 'difficile';
 export type Visibility = 'public' | 'unlisted' | 'private';
 export type ProgressStatus = 'en_cours' | 'termine';
 export type CardStatus = 'normal' | 'signalee' | 'deleted';
@@ -10,7 +9,6 @@ export interface Card {
   title: string;
   type: CardType;
   lang: string;
-  difficulty: Difficulty;
   content: string;
   visibility: Visibility;
   status: CardStatus;

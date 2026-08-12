@@ -226,6 +226,20 @@ button:disabled {
   font-size: 0.9rem;
 }
 
+.filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filter-toggle input {
+  cursor: pointer;
+}
+
 .mode-tabs {
   display: inline-flex;
   gap: 0.25rem;
@@ -318,21 +332,6 @@ button:disabled {
 .badge-recitation {
   background: var(--coral-soft);
   color: var(--coral);
-}
-
-.badge-difficulty-facile {
-  background: var(--green-soft);
-  color: var(--green);
-}
-
-.badge-difficulty-moyen {
-  background: var(--amber-soft);
-  color: var(--amber);
-}
-
-.badge-difficulty-difficile {
-  background: var(--red-soft);
-  color: var(--red);
 }
 
 .badge-status-termine {

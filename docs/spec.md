@@ -59,7 +59,6 @@ create table cards (
   title         text not null,
   type          text not null check (type in ('association', 'recitation')),
   lang          text not null default 'fr',       -- ISO 639-1
-  difficulty    text not null default 'moyen'      check (difficulty in ('facile', 'moyen', 'difficile')),
   content       text not null default '',          -- texte brut, voir §3.3 pour la syntaxe
   visibility    text not null default 'public'     check (visibility in ('public', 'unlisted', 'private')),
   status        text not null default 'normal'     check (status in ('normal', 'signalee', 'deleted')),
@@ -121,7 +120,8 @@ Règle de parsing : chaque ligne non vide sans `|` produit un item `{text}`, dan
 
 **Ordre** (pour `recitation` uniquement) : la position de la ligne dans le texte porte l'information de séquence — rien de plus à stocker pour ça.
 
-- `lang` et `difficulty` restent portés par la `card` entière (toutes les lignes qu'elle contient partagent la même langue/difficulté) — hypothèse non re-questionnée depuis §8 v1, à confirmer.
+- `lang` reste porté par la `card` entière (toutes les lignes qu'elle contient partagent la même langue) — hypothèse non re-questionnée depuis §8 v1, à confirmer.
+- La notion de difficulté (`difficulty`) a été retirée du schéma : jugée non utile, elle n'apportait pas de valeur distincte de la difficulté perçue individuellement par chaque utilisateur.
 
 ---
 
@@ -218,7 +218,7 @@ create policy "user_roles_read_self_or_privileged" on user_roles
 
 ## 8. Questions ouvertes — à trancher avant implémentation
 
-1. **Portée de `lang` et `difficulty`** : au niveau de la `card` entière (hypothèse actuelle du schéma) ou par ligne/paire individuelle (nécessiterait de les glisser dans le format pipe, ex. `13|Bouches-du-Rhône|fr|facile`) ?
+1. **Portée de `lang`** : au niveau de la `card` entière (hypothèse actuelle du schéma) ou par ligne/paire individuelle (nécessiterait de la glisser dans le format pipe, ex. `13|Bouches-du-Rhône|fr`) ?
 2. **Granularité du statut** : confirmé au niveau card entière suite à la dernière décision — si une liste de 100 paires doit un jour permettre de cibler ce qui reste à apprendre, il faudra revenir sur ce point (fractionner la card en plusieurs cards plus petites est le contournement le plus simple avec le modèle actuel, plutôt que réintroduire un statut par ligne).
 3. **Trigger d'archivage** : `card_revisions` s'alimente via un trigger Postgres `before update on cards` (à écrire) plutôt que par une écriture explicite côté client, pour garantir qu'aucune édition n'échappe à l'historique.
 
