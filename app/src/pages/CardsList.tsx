@@ -13,6 +13,7 @@ export default function CardsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [onlyInProgress, setOnlyInProgress] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,10 +64,13 @@ export default function CardsList() {
     };
   }, [user]);
 
-  const filteredCards = useMemo(
-    () => (typeFilter === 'all' ? cards : cards.filter((card) => card.type === typeFilter)),
-    [cards, typeFilter],
-  );
+  const filteredCards = useMemo(() => {
+    let result = typeFilter === 'all' ? cards : cards.filter((card) => card.type === typeFilter);
+    if (user && onlyInProgress) {
+      result = result.filter((card) => progressByCard[card.id]?.status !== 'termine');
+    }
+    return result;
+  }, [cards, typeFilter, user, onlyInProgress, progressByCard]);
 
   if (loading) return <p>Chargement…</p>;
   if (error) return <p className="error">{error}</p>;
@@ -97,8 +101,24 @@ export default function CardsList() {
           Récitation
         </button>
       </div>
+      {user && (
+        <label className="filter-toggle">
+          <input
+            type="checkbox"
+            checked={onlyInProgress}
+            onChange={(e) => setOnlyInProgress(e.target.checked)}
+          />
+          Cartes en cours d'étude uniquement
+        </label>
+      )}
       {filteredCards.length === 0 && (
-        <p>{cards.length === 0 ? "Aucune carte pour l'instant." : 'Aucune carte de ce type.'}</p>
+        <p>
+          {cards.length === 0
+            ? "Aucune carte pour l'instant."
+            : onlyInProgress && user
+              ? 'Aucune carte en cours pour ce filtre.'
+              : 'Aucune carte de ce type.'}
+        </p>
       )}
       <ul className="card-list">
         {filteredCards.map((card) => {
@@ -113,11 +133,13 @@ export default function CardsList() {
                   {card.type === 'association' ? 'Association' : 'Récitation'}
                 </span>
                 <span className="badge">{card.lang}</span>
-                <span className={`badge badge-difficulty-${card.difficulty}`}>{card.difficulty}</span>
                 {status && (
                   <span className={`badge badge-status-${status}`}>
                     {status === 'termine' ? 'Terminé' : 'En cours'}
                   </span>
+                )}
+                {card.status === 'signalee' && (
+                  <span className="badge badge-cardstatus-signalee">Signalée</span>
                 )}
               </div>
             </li>

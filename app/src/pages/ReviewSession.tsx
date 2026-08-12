@@ -115,6 +115,13 @@ export default function ReviewSession() {
   const [dragging, setDragging] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const dragStartX = useRef(0);
+  const currentLineRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    if (index >= 0) {
+      currentLineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [index]);
 
   useEffect(() => {
     let cancelled = false;
@@ -320,7 +327,11 @@ export default function ReviewSession() {
         </p>
         <div className="review-text">
           {shown.map((item, i) => (
-            <p key={i} className={i === index ? 'review-line-current' : 'review-line-done'}>
+            <p
+              key={i}
+              ref={i === index ? currentLineRef : undefined}
+              className={i === index ? 'review-line-current' : 'review-line-done'}
+            >
               {item.text}
             </p>
           ))}

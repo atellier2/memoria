@@ -200,6 +200,22 @@ button:disabled {
   transform: none;
 }
 
+.link-button {
+  margin: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--accent-dark);
+  font-weight: 700;
+  text-decoration: underline;
+  border-radius: 0;
+}
+
+.link-button:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+}
+
 .error {
   color: var(--red);
   font-weight: 600;
@@ -208,6 +224,20 @@ button:disabled {
 .hint {
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filter-toggle input {
+  cursor: pointer;
 }
 
 .mode-tabs {
@@ -304,21 +334,6 @@ button:disabled {
   color: var(--coral);
 }
 
-.badge-difficulty-facile {
-  background: var(--green-soft);
-  color: var(--green);
-}
-
-.badge-difficulty-moyen {
-  background: var(--amber-soft);
-  color: var(--amber);
-}
-
-.badge-difficulty-difficile {
-  background: var(--red-soft);
-  color: var(--red);
-}
-
 .badge-status-termine {
   background: var(--green);
   color: white;
@@ -327,6 +342,35 @@ button:disabled {
 .badge-status-en_cours {
   background: var(--amber);
   color: white;
+}
+
+.badge-cardstatus-signalee {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.badge-cardstatus-deleted {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.status-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.status-actions button {
+  margin-top: 0;
+  background: var(--bg-alt);
+  color: var(--fg);
+  box-shadow: none;
+}
+
+.status-actions .error {
+  margin: 0;
 }
 
 .revision-list {

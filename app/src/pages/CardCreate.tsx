@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import type { CardType, Difficulty, Visibility } from '../types';
+import type { CardType, Visibility } from '../types';
 import { useAuth } from '../context/AuthContext';
 
 export default function CardCreate() {
@@ -11,7 +11,6 @@ export default function CardCreate() {
   const [title, setTitle] = useState('');
   const [type, setType] = useState<CardType>('association');
   const [lang, setLang] = useState('fr');
-  const [difficulty, setDifficulty] = useState<Difficulty>('moyen');
   const [visibility, setVisibility] = useState<Visibility>('public');
   const [content, setContent] = useState('');
   const [saving, setSaving] = useState(false);
@@ -25,7 +24,7 @@ export default function CardCreate() {
     try {
       const { data, error } = await supabase
         .from('cards')
-        .insert({ title, type, lang, difficulty, visibility, content, owner_id: user.id })
+        .insert({ title, type, lang, visibility, content, owner_id: user.id })
         .select('id')
         .single();
       if (error) {
@@ -63,19 +62,6 @@ export default function CardCreate() {
         <div>
           <label htmlFor="lang">Langue</label>
           <input id="lang" value={lang} onChange={(e) => setLang(e.target.value)} disabled={!user} />
-        </div>
-        <div>
-          <label htmlFor="difficulty">Difficulté</label>
-          <select
-            id="difficulty"
-            value={difficulty}
-            onChange={(e) => setDifficulty(e.target.value as Difficulty)}
-            disabled={!user}
-          >
-            <option value="facile">Facile</option>
-            <option value="moyen">Moyen</option>
-            <option value="difficile">Difficile</option>
-          </select>
         </div>
         <div>
           <label htmlFor="visibility">Visibilité</label>

@@ -13,7 +13,6 @@ export default function CardView() {
       <div className="card-meta">
         <span className={`badge badge-${card.type}`}>{isAssociation ? 'Association' : 'Récitation'}</span>
         <span className="badge">{card.lang}</span>
-        <span className={`badge badge-difficulty-${card.difficulty}`}>{card.difficulty}</span>
         <span className="badge">{card.visibility}</span>
       </div>
 

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import type { CardRevision, Difficulty, Visibility } from '../types';
+import type { CardRevision, Visibility } from '../types';
 import { useAuth } from '../context/AuthContext';
 import type { CardOutletContext } from './CardPage';
 
@@ -11,7 +11,6 @@ export default function CardEditForm() {
 
   const [title, setTitle] = useState(card.title);
   const [lang, setLang] = useState(card.lang);
-  const [difficulty, setDifficulty] = useState<Difficulty>(card.difficulty);
   const [visibility, setVisibility] = useState<Visibility>(card.visibility);
   const [content, setContent] = useState(card.content);
   const [saving, setSaving] = useState(false);
@@ -60,7 +59,7 @@ export default function CardEditForm() {
     try {
       const { data, error } = await supabase
         .from('cards')
-        .update({ title, lang, difficulty, visibility, content })
+        .update({ title, lang, visibility, content })
         .eq('id', card.id)
         .select('*')
         .single();
@@ -132,19 +131,6 @@ export default function CardEditForm() {
           <div>
             <label htmlFor="lang">Langue</label>
             <input id="lang" value={lang} onChange={(e) => setLang(e.target.value)} disabled={!canEdit} />
-          </div>
-          <div>
-            <label htmlFor="difficulty">Difficulté</label>
-            <select
-              id="difficulty"
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value as Difficulty)}
-              disabled={!canEdit}
-            >
-              <option value="facile">Facile</option>
-              <option value="moyen">Moyen</option>
-              <option value="difficile">Difficile</option>
-            </select>
           </div>
           <div>
             <label htmlFor="visibility">Visibilité</label>
