@@ -119,6 +119,9 @@ export default function CardsList() {
                     {status === 'termine' ? 'Terminé' : 'En cours'}
                   </span>
                 )}
+                {card.status === 'signalee' && (
+                  <span className="badge badge-cardstatus-signalee">Signalée</span>
+                )}
               </div>
             </li>
           );

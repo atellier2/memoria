@@ -32,6 +32,9 @@ Backend : **Supabase** (Postgres + Auth + Row Level Security + API auto-génér�
 | Échelle de la communauté | Ouverte, taille inconnue |
 | Gestion des conflits d'édition | Dernier écrit gagne, au niveau de la `card` entière — **risque accepté**, voir §7 |
 | Backend | Supabase (Postgres, Auth, RLS) |
+| Modération / suppression | Suppression douce par statut (`normal` / `signalee` / `deleted`) plutôt qu'un `delete` SQL — voir §4.2 |
+| Rôles utilisateur | Trois rôles (`membre`, `manager`, `admin`), stockés dans `user_roles`, gérés uniquement en base — jamais via l'application front |
+| Authentification | Email + mot de passe **et** lien magique, au choix de l'utilisateur |
 
 ---
 
@@ -59,10 +62,19 @@ create table cards (
   difficulty    text not null default 'moyen'      check (difficulty in ('facile', 'moyen', 'difficile')),
   content       text not null default '',          -- texte brut, voir §3.3 pour la syntaxe
   visibility    text not null default 'public'     check (visibility in ('public', 'unlisted', 'private')),
+  status        text not null default 'normal'     check (status in ('normal', 'signalee', 'deleted')),
   owner_id      uuid not null references auth.users(id),
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now(),
   updated_by    uuid references auth.users(id)
+);
+
+-- ---------------------------------------------------------------
+-- Rôles utilisateur — gérés exclusivement en base, jamais depuis le front.
+create table user_roles (
+  user_id     uuid primary key references auth.users(id) on delete cascade,
+  role        text not null default 'membre' check (role in ('membre', 'manager', 'admin')),
+  created_at  timestamptz not null default now()
 );
 
 -- ---------------------------------------------------------------
@@ -115,7 +127,7 @@ Règle de parsing : chaque ligne non vide sans `|` produit un item `{text}`, dan
 
 ## 4. Authentification & permissions (RLS)
 
-- Auth via Supabase Auth (email magic link a minima).
+- Auth via Supabase Auth : email + mot de passe, ou lien magique — les deux options sont proposées côté client (`Login.tsx`), le provider "email" de Supabase gère les deux sans distinction en base.
 - `cards.visibility = 'public'` → lecture libre par tout le monde (y compris non connecté).
 - Édition du `content` → ouverte à **tout utilisateur authentifié**, quel que soit le propriétaire. Pas de liste de collaborateurs à gérer.
 - `progress` → RLS stricte : un utilisateur ne peut lire/écrire que ses propres lignes (`user_id = auth.uid()`).
@@ -126,18 +138,25 @@ Règle de parsing : chaque ligne non vide sans `|` produit un item `{text}`, dan
 alter table cards enable row level security;
 alter table progress enable row level security;
 alter table card_revisions enable row level security;
+alter table user_roles enable row level security;
 
--- Lecture publique des cards publiques
+-- Lecture publique des cards publiques ; une card 'deleted' reste masquée
+-- sauf pour son propriétaire ou un manager/admin
 create policy "cards_read_public" on cards
-  for select using (visibility = 'public' or owner_id = auth.uid());
+  for select using (
+    (visibility = 'public' or owner_id = auth.uid())
+    and (status <> 'deleted' or owner_id = auth.uid() or public.current_user_role() in ('manager', 'admin'))
+  );
 
--- Édition ouverte à tout utilisateur authentifié
+-- Édition ouverte à tout utilisateur authentifié — le contrôle des
+-- transitions de `status` se fait via trigger, voir §4.2
 create policy "cards_update_open" on cards
   for update using (auth.uid() is not null);
 
--- Création : tout utilisateur authentifié devient owner_id de sa propre card
+-- Création : tout utilisateur authentifié devient owner_id de sa propre
+-- card, qui démarre toujours en statut 'normal'
 create policy "cards_insert_authenticated" on cards
-  for insert with check (auth.uid() = owner_id);
+  for insert with check (auth.uid() = owner_id and status = 'normal');
 
 -- Progression strictement individuelle
 create policy "progress_owner_only" on progress
@@ -146,7 +165,25 @@ create policy "progress_owner_only" on progress
 -- Historique lisible par tous, écrit uniquement via trigger (voir §5)
 create policy "revisions_read_public" on card_revisions
   for select using (true);
+
+-- Rôle lisible par soi-même, ou par un manager/admin ; jamais d'écriture
+-- exposée au client (voir §4.2)
+create policy "user_roles_read_self_or_privileged" on user_roles
+  for select using (
+    user_id = auth.uid()
+    or exists (select 1 from user_roles ur where ur.user_id = auth.uid() and ur.role in ('manager', 'admin'))
+  );
 ```
+
+### 4.2 Suppression douce et rôles
+
+- Pas de `delete` SQL sur `cards` : la suppression est un changement de `status`, réversible.
+- Trois rôles, stockés dans `user_roles` (un rôle par utilisateur, `membre` par défaut à la création du compte) :
+  - **membre** : peut créer une card et la faire passer en statut `signalee` (signalement en cas de problème). Ne peut pas la faire passer en `deleted` ni la restaurer en `normal`.
+  - **manager** / **admin** : peuvent faire passer une card en `deleted` (suppression douce) ou la remettre en `normal` (restauration).
+- Contrôle appliqué par un trigger Postgres (`enforce_card_status_transition`, `before update on cards`) qui vérifie le rôle de l'auteur via `user_roles` — **la logique de droits vit entièrement en base**, jamais dans le front. Le front affiche les actions à tout utilisateur authentifié et se contente de relayer l'erreur renvoyée par la base si l'action est refusée.
+- Une card `deleted` est masquée de la lecture publique (`cards_read_public`), sauf pour son propriétaire ou un manager/admin (pour pouvoir la consulter et éventuellement la restaurer).
+- L'attribution des rôles (`membre` → `manager`/`admin`) se fait par écriture directe dans `user_roles` en base (SQL) — aucune policy d'écriture n'est exposée au client sur cette table.
 
 ---
 
@@ -157,6 +194,7 @@ create policy "revisions_read_public" on card_revisions
 3. **Réviser (association)** : parsing du `content` à la lecture → toutes les paires de la card sont mises en jeu à chaque session (le statut, étant global à la card, ne filtre pas les paires individuelles). En fin de session, l'utilisateur marque la card entière `termine` ou `en_cours`.
 4. **Réciter (récitation)** : parsing du `content` à la lecture → parcours séquentiel complet des lignes dans l'ordre du texte, du début à la fin. En fin de parcours, l'utilisateur marque la card entière `termine` ou `en_cours`.
 5. **Consulter l'historique d'une card** : lecture de `card_revisions`, restauration possible d'une version antérieure par n'importe quel utilisateur authentifié (cohérent avec l'édition ouverte — pas de restriction au seul propriétaire).
+6. **Signaler / supprimer / restaurer une card** : changement de `status` via `update`, ouvert à tout utilisateur authentifié côté front — le trigger `enforce_card_status_transition` accepte ou rejette selon le rôle de l'auteur (voir §4.2).
 
 ---
 
@@ -174,7 +212,7 @@ create policy "revisions_read_public" on card_revisions
 - **Édition totalement ouverte, sans validation préalable** : conséquence directe de l'abandon de `deck_collaborators` — n'importe quel utilisateur authentifié peut modifier n'importe quelle card, y compris celles qu'il n'a pas créées. C'est un choix assumé (modèle wiki), mais ça expose à du vandalisme ou des modifications de mauvaise foi dès le premier jour. `card_revisions` est le seul garde-fou (rollback a posteriori, jamais de blocage a priori).
 - **Pas de filtrage par item lors d'une session de révision** : le statut étant global à la card, une session de révision remet systématiquement en jeu la totalité des paires — y compris celles que l'utilisateur maîtrise déjà. Sur une card à 100 paires, ça veut dire réviser les 100 à chaque fois, sans notion de "ce qu'il me reste à apprendre". Accepté comme conséquence directe du refus de statut par ligne.
 - **Pas de co-édition temps réel** : deux personnes ouvrant le même éditeur au même moment ne se voient pas mutuellement. Hors périmètre V1.
-- **Modération** : aucun mécanisme de signalement ou de blocage d'utilisateur en V1 malgré l'édition ouverte à tous. À considérer avant une mise en production publique.
+- **Modération** : signalement (`signalee`) et suppression douce (`deleted`) par statut, contrôlés par rôle (§4.2). Pas encore de mécanisme de blocage d'utilisateur ni de file de modération dédiée (liste des cards signalées) — à considérer si le volume de signalements le justifie.
 
 ---
 
