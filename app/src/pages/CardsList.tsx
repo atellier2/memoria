@@ -13,7 +13,7 @@ export default function CardsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
-  const [onlyInProgress, setOnlyInProgress] = useState(true);
+  const [onlyInProgress, setOnlyInProgress] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,7 +67,7 @@ export default function CardsList() {
   const filteredCards = useMemo(() => {
     let result = typeFilter === 'all' ? cards : cards.filter((card) => card.type === typeFilter);
     if (user && onlyInProgress) {
-      result = result.filter((card) => progressByCard[card.id]?.status !== 'termine');
+      result = result.filter((card) => progressByCard[card.id]?.status === 'en_cours');
     }
     return result;
   }, [cards, typeFilter, user, onlyInProgress, progressByCard]);
@@ -102,14 +102,15 @@ export default function CardsList() {
         </button>
       </div>
       {user && (
-        <label className="filter-toggle">
-          <input
-            type="checkbox"
-            checked={onlyInProgress}
-            onChange={(e) => setOnlyInProgress(e.target.checked)}
-          />
+        <button
+          type="button"
+          className={`filter-toggle${onlyInProgress ? ' active' : ''}`}
+          aria-pressed={onlyInProgress}
+          onClick={() => setOnlyInProgress((v) => !v)}
+        >
+          <span className="filter-toggle-check" aria-hidden="true" />
           Cartes en cours d'étude uniquement
-        </label>
+        </button>
       )}
       {filteredCards.length === 0 && (
         <p>

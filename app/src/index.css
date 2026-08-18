@@ -300,17 +300,58 @@ button:disabled {
 }
 
 .filter-toggle {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1.25rem;
+  gap: 0.6rem;
+  margin: 0 0 1.25rem;
+  padding: 0.55rem 1rem 0.55rem 0.65rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--bg-alt);
   color: var(--muted);
+  font: inherit;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: none;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.filter-toggle input {
-  cursor: pointer;
+.filter-toggle:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+}
+
+.filter-toggle.active {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.filter-toggle-check {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 0.4rem;
+  border: 2px solid var(--border);
+  background: var(--panel-bg);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.filter-toggle.active .filter-toggle-check {
+  border-color: var(--accent);
+  background: var(--accent);
+  position: relative;
+}
+
+.filter-toggle.active .filter-toggle-check::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(40deg);
 }
 
 .mode-tabs {
