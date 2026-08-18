@@ -41,28 +41,18 @@ function IconFlip() {
   );
 }
 
-function IconArrowRight() {
+function IconThumbUp() {
   return (
-    <svg {...ICON_PROPS}>
-      <line x1="5" y1="12" x2="19" y2="12" />
-      <polyline points="12 5 19 12 12 19" />
+    <svg {...ICON_PROPS} width={18} height={18}>
+      <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
     </svg>
   );
 }
 
-function IconCheck() {
+function IconThumbDown() {
   return (
-    <svg {...ICON_PROPS}>
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
-
-function IconUndo() {
-  return (
-    <svg {...ICON_PROPS} width={13} height={13}>
-      <polyline points="9 14 4 9 9 4" />
-      <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+    <svg {...ICON_PROPS} width={18} height={18}>
+      <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zM17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
     </svg>
   );
 }
@@ -238,7 +228,7 @@ export default function ReviewSession() {
   }
 
   function handleCardPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (!revealed || isAnimating) return;
+    if (!revealed || isAnimating || (e.target as HTMLElement).closest('button')) return;
     dragStartX.current = e.clientX;
     setDragging(true);
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -366,38 +356,52 @@ export default function ReviewSession() {
           onPointerCancel={handleCardPointerUp}
           onClick={handleCardClick}
         >
-          {revealed && (
+          <p className="review-prompt">{current.prompt}</p>
+          {revealed && <p className="review-answer">{current.answer}</p>}
+          {!revealed ? (
             <button
               type="button"
-              className="review-card-requeue"
+              className="review-card-flip review-card-flip-hint"
               disabled={isAnimating}
               onClick={(e) => {
                 e.stopPropagation();
-                requeueCurrent();
+                if (!isAnimating) setRevealed(true);
               }}
-              aria-label="Je ne savais pas — remettre dans la pile à réviser"
-              title="Je ne savais pas — remettre dans la pile à réviser"
+              aria-label="Révéler la réponse"
+              title="Révéler la réponse"
             >
-              <IconUndo />
+              <IconFlip />
             </button>
+          ) : (
+            <div className="review-card-judge">
+              <button
+                type="button"
+                className="review-card-judge-btn review-card-judge-no"
+                disabled={isAnimating}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  requeueCurrent();
+                }}
+                aria-label="Je ne savais pas — remettre dans la pile à réviser"
+                title="Je ne savais pas — remettre dans la pile à réviser"
+              >
+                <IconThumbDown />
+              </button>
+              <button
+                type="button"
+                className="review-card-judge-btn review-card-judge-yes"
+                disabled={isAnimating}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  completeCurrent();
+                }}
+                aria-label={isLastCard ? 'Je savais — terminer' : 'Je savais — carte suivante'}
+                title={isLastCard ? 'Je savais — terminer' : 'Je savais — carte suivante'}
+              >
+                <IconThumbUp />
+              </button>
+            </div>
           )}
-          <p className="review-prompt">{current.prompt}</p>
-          {revealed && <p className="review-answer">{current.answer}</p>}
-          <button
-            type="button"
-            className={`review-card-flip${!revealed ? ' review-card-flip-hint' : ''}`}
-            disabled={isAnimating}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (isAnimating) return;
-              if (!revealed) setRevealed(true);
-              else completeCurrent();
-            }}
-            aria-label={!revealed ? 'Révéler la réponse' : isLastCard ? 'Terminer' : 'Carte suivante'}
-            title={!revealed ? 'Révéler la réponse' : isLastCard ? 'Terminer' : 'Carte suivante'}
-          >
-            {!revealed ? <IconFlip /> : isLastCard ? <IconCheck /> : <IconArrowRight />}
-          </button>
         </div>
       </div>
       {revealed && <p className="review-hint-swipe">Glissez la carte ou appuyez sur → pour continuer</p>}

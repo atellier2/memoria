@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext';
 export interface CardOutletContext {
   card: Card;
   setCard: (card: Card) => void;
+  onDeleteCard: () => void;
+  deletingCard: boolean;
 }
 
 const STATUS_LABELS: Record<CardStatus, string> = {
@@ -93,25 +95,34 @@ export default function CardPage() {
       </nav>
       {user && (
         <div className="status-actions">
-          {card.status !== 'signalee' && (
-            <button type="button" onClick={() => changeStatus('signalee')} disabled={statusSaving}>
-              🚩 Signaler
-            </button>
-          )}
-          {card.status !== 'deleted' && (
-            <button type="button" onClick={() => changeStatus('deleted')} disabled={statusSaving}>
-              🗑️ Supprimer
-            </button>
-          )}
-          {card.status !== 'normal' && (
+          {card.status === 'deleted' && (
             <button type="button" onClick={() => changeStatus('normal')} disabled={statusSaving}>
               ♻️ Restaurer
+            </button>
+          )}
+          {card.status !== 'signalee' && (
+            <button
+              type="button"
+              className="status-action-subtle"
+              onClick={() => changeStatus('signalee')}
+              disabled={statusSaving}
+            >
+              🚩 Signaler
             </button>
           )}
           {statusError && <p className="error">{statusError}</p>}
         </div>
       )}
-      <Outlet context={{ card, setCard } satisfies CardOutletContext} />
+      <Outlet
+        context={
+          {
+            card,
+            setCard,
+            onDeleteCard: () => changeStatus('deleted'),
+            deletingCard: statusSaving,
+          } satisfies CardOutletContext
+        }
+      />
     </div>
   );
 }
