@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
+import { NavLink, Outlet, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Card, CardStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext';
 export interface CardOutletContext {
   card: Card;
   setCard: (card: Card) => void;
+  onDeleteCard: () => void;
+  deletingCard: boolean;
 }
 
 const STATUS_LABELS: Record<CardStatus, string> = {
@@ -18,8 +20,6 @@ const STATUS_LABELS: Record<CardStatus, string> = {
 export default function CardPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const location = useLocation();
-  const isEditing = location.pathname.endsWith('/edit');
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,11 +95,6 @@ export default function CardPage() {
       </nav>
       {user && (
         <div className="status-actions">
-          {isEditing && card.status !== 'deleted' && (
-            <button type="button" onClick={() => changeStatus('deleted')} disabled={statusSaving}>
-              🗑️ Supprimer
-            </button>
-          )}
           {card.status === 'deleted' && (
             <button type="button" onClick={() => changeStatus('normal')} disabled={statusSaving}>
               ♻️ Restaurer
@@ -118,7 +113,16 @@ export default function CardPage() {
           {statusError && <p className="error">{statusError}</p>}
         </div>
       )}
-      <Outlet context={{ card, setCard } satisfies CardOutletContext} />
+      <Outlet
+        context={
+          {
+            card,
+            setCard,
+            onDeleteCard: () => changeStatus('deleted'),
+            deletingCard: statusSaving,
+          } satisfies CardOutletContext
+        }
+      />
     </div>
   );
 }

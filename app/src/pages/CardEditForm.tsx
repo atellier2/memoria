@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import type { CardOutletContext } from './CardPage';
 
 export default function CardEditForm() {
-  const { card, setCard } = useOutletContext<CardOutletContext>();
+  const { card, setCard, onDeleteCard, deletingCard } = useOutletContext<CardOutletContext>();
   const { user } = useAuth();
 
   const [title, setTitle] = useState(card.title);
@@ -164,9 +164,23 @@ export default function CardEditForm() {
         {saved && <p className="hint">Modifications enregistrées.</p>}
 
         {canEdit && (
-          <button type="submit" disabled={saving}>
-            {saving ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
+          <div className="form-actions">
+            <button type="submit" disabled={saving}>
+              {saving ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+            {card.status !== 'deleted' && (
+              <button
+                type="button"
+                className="icon-button-danger"
+                onClick={onDeleteCard}
+                disabled={deletingCard}
+                aria-label="Supprimer la carte"
+                title="Supprimer la carte"
+              >
+                🗑️
+              </button>
+            )}
+          </div>
         )}
       </form>
 

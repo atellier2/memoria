@@ -462,6 +462,39 @@ button:disabled {
   box-shadow: none;
 }
 
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.form-actions button {
+  margin-top: 0;
+}
+
+.icon-button-danger {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  background: var(--red-soft);
+  color: var(--red);
+  box-shadow: none;
+  opacity: 0.85;
+  transition: opacity 0.15s ease, transform 0.12s ease;
+}
+
+.icon-button-danger:hover:not(:disabled) {
+  opacity: 1;
+  transform: translateY(-1px);
+  box-shadow: none;
+}
+
 .revision-list {
   list-style: none;
   padding: 0;
