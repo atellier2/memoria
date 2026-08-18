@@ -117,14 +117,87 @@ h1, h2, h3 {
   white-space: nowrap;
 }
 
-.nav-user {
+.user-menu {
+  position: relative;
+}
+
+.user-menu-trigger {
+  margin: 0;
+  padding: 0;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.user-menu-trigger:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.user-menu-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 220px;
+  background: var(--panel-bg);
+  border-radius: 0.9rem;
+  box-shadow: var(--shadow-md);
+  padding: 0.5rem;
+  z-index: 20;
+}
+
+.user-menu-email {
+  padding: 0.5rem 0.65rem 0.65rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border);
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  max-width: 40vw;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.user-menu-item {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border: none;
+  border-radius: 0.6rem;
+  background: none;
+  box-shadow: none;
+  color: var(--fg);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.user-menu-item:hover:not(:disabled) {
+  background: var(--bg-alt);
+  transform: none;
+  box-shadow: none;
 }
 
 .panel {
