@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useParams } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Card, CardStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +18,8 @@ const STATUS_LABELS: Record<CardStatus, string> = {
 export default function CardPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const location = useLocation();
+  const isEditing = location.pathname.endsWith('/edit');
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,19 +95,24 @@ export default function CardPage() {
       </nav>
       {user && (
         <div className="status-actions">
-          {card.status !== 'signalee' && (
-            <button type="button" onClick={() => changeStatus('signalee')} disabled={statusSaving}>
-              🚩 Signaler
-            </button>
-          )}
-          {card.status !== 'deleted' && (
+          {isEditing && card.status !== 'deleted' && (
             <button type="button" onClick={() => changeStatus('deleted')} disabled={statusSaving}>
               🗑️ Supprimer
             </button>
           )}
-          {card.status !== 'normal' && (
+          {card.status === 'deleted' && (
             <button type="button" onClick={() => changeStatus('normal')} disabled={statusSaving}>
               ♻️ Restaurer
+            </button>
+          )}
+          {card.status !== 'signalee' && (
+            <button
+              type="button"
+              className="status-action-subtle"
+              onClick={() => changeStatus('signalee')}
+              disabled={statusSaving}
+            >
+              🚩 Signaler
             </button>
           )}
           {statusError && <p className="error">{statusError}</p>}
