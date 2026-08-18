@@ -9,6 +9,7 @@ export interface CardOutletContext {
   setCard: (card: Card) => void;
   onDeleteCard: () => void;
   deletingCard: boolean;
+  canDelete: boolean;
 }
 
 const STATUS_LABELS: Record<CardStatus, string> = {
@@ -19,7 +20,8 @@ const STATUS_LABELS: Record<CardStatus, string> = {
 
 export default function CardPage() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const canModerate = role === 'manager' || role === 'admin';
   const [card, setCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +97,7 @@ export default function CardPage() {
       </nav>
       {user && (
         <div className="status-actions">
-          {card.status === 'deleted' && (
+          {canModerate && card.status === 'deleted' && (
             <button type="button" onClick={() => changeStatus('normal')} disabled={statusSaving}>
               ♻️ Restaurer
             </button>
@@ -120,6 +122,7 @@ export default function CardPage() {
             setCard,
             onDeleteCard: () => changeStatus('deleted'),
             deletingCard: statusSaving,
+            canDelete: canModerate,
           } satisfies CardOutletContext
         }
       />

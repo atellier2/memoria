@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import type { CardOutletContext } from './CardPage';
 
 export default function CardEditForm() {
-  const { card, setCard, onDeleteCard, deletingCard } = useOutletContext<CardOutletContext>();
+  const { card, setCard, onDeleteCard, deletingCard, canDelete } = useOutletContext<CardOutletContext>();
   const { user } = useAuth();
 
   const [title, setTitle] = useState(card.title);
@@ -168,7 +168,7 @@ export default function CardEditForm() {
             <button type="submit" disabled={saving}>
               {saving ? 'Enregistrement…' : 'Enregistrer'}
             </button>
-            {card.status !== 'deleted' && (
+            {canDelete && card.status !== 'deleted' && (
               <button
                 type="button"
                 className="icon-button-danger"
