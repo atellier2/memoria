@@ -142,6 +142,9 @@ export default function CardsList() {
                 {card.status === 'signalee' && (
                   <span className="badge badge-cardstatus-signalee">Signalée</span>
                 )}
+                {card.status === 'deleted' && (
+                  <span className="badge badge-cardstatus-deleted">Supprimée</span>
+                )}
               </div>
             </li>
           );
