@@ -14,6 +14,7 @@ export default function CardsList() {
   const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [onlyInProgress, setOnlyInProgress] = useState(false);
+  const [hideDeleted, setHideDeleted] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,8 +70,11 @@ export default function CardsList() {
     if (user && onlyInProgress) {
       result = result.filter((card) => progressByCard[card.id]?.status === 'en_cours');
     }
+    if (user && hideDeleted) {
+      result = result.filter((card) => card.status !== 'deleted');
+    }
     return result;
-  }, [cards, typeFilter, user, onlyInProgress, progressByCard]);
+  }, [cards, typeFilter, user, onlyInProgress, hideDeleted, progressByCard]);
 
   if (loading) return <p>Chargement…</p>;
   if (error) return <p className="error">{error}</p>;
@@ -102,15 +106,26 @@ export default function CardsList() {
         </button>
       </div>
       {user && (
-        <button
-          type="button"
-          className={`filter-toggle${onlyInProgress ? ' active' : ''}`}
-          aria-pressed={onlyInProgress}
-          onClick={() => setOnlyInProgress((v) => !v)}
-        >
-          <span className="filter-toggle-check" aria-hidden="true" />
-          Cartes en cours d'étude uniquement
-        </button>
+        <div className="filter-toggle-group">
+          <button
+            type="button"
+            className={`filter-toggle${onlyInProgress ? ' active' : ''}`}
+            aria-pressed={onlyInProgress}
+            onClick={() => setOnlyInProgress((v) => !v)}
+          >
+            <span className="filter-toggle-check" aria-hidden="true" />
+            Cartes en cours d'étude uniquement
+          </button>
+          <button
+            type="button"
+            className={`filter-toggle${hideDeleted ? ' active' : ''}`}
+            aria-pressed={hideDeleted}
+            onClick={() => setHideDeleted((v) => !v)}
+          >
+            <span className="filter-toggle-check" aria-hidden="true" />
+            Cartes supprimées masquées
+          </button>
+        </div>
       )}
       {filteredCards.length === 0 && (
         <p>
