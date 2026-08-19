@@ -3,7 +3,7 @@ import { Link, useOutletContext } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { ProgressStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { parseAssociation, parseRecitation, shuffle } from '../lib/parseContent';
+import { parseAssociation, parseRecitation, pairLineKey, shuffle } from '../lib/parseContent';
 import type { CardOutletContext } from './CardPage';
 
 const SWIPE_THRESHOLD = 80;
@@ -12,12 +12,13 @@ const FLING_DURATION = 200;
 
 interface Pair {
   id: number;
+  key: string;
   prompt: string;
   answer: string;
 }
 
 function buildPairs(content: string): Pair[] {
-  return parseAssociation(content).map((p, i) => ({ id: i, prompt: p.front, answer: p.back }));
+  return parseAssociation(content).map((p, i) => ({ id: i, key: pairLineKey(p), prompt: p.front, answer: p.back }));
 }
 
 const ICON_PROPS = {
@@ -89,8 +90,12 @@ export default function ReviewSession() {
   const { user } = useAuth();
   const isAssociation = card.type === 'association';
 
-  const [queue, setQueue] = useState<Pair[]>(() => (isAssociation ? shuffle(buildPairs(card.content)) : []));
+  const allPairs = useMemo(() => (isAssociation ? buildPairs(card.content) : []), [isAssociation, card.content]);
+  const [queue, setQueue] = useState<Pair[]>([]);
   const [doneStack, setDoneStack] = useState<Pair[]>([]);
+  const [masteredKeys, setMasteredKeys] = useState<Set<string>>(new Set());
+  const [masteryLoaded, setMasteryLoaded] = useState(!isAssociation);
+  const [resetting, setResetting] = useState(false);
   const recitationLines = useMemo(() => (isAssociation ? [] : parseRecitation(card.content)), [isAssociation, card.content]);
   const [index, setIndex] = useState(-1);
 
@@ -136,7 +141,34 @@ export default function ReviewSession() {
     };
   }, [user, card.id]);
 
-  const totalCount = isAssociation ? queue.length + doneStack.length : recitationLines.length;
+  // Charge les lignes déjà mémorisées et initialise la file de révision avec
+  // uniquement ce qui reste à réviser.
+  useEffect(() => {
+    if (!isAssociation) return;
+    let cancelled = false;
+    async function load() {
+      let mastered = new Set<string>();
+      if (user) {
+        const { data } = await supabase
+          .from('pair_progress')
+          .select('line_key')
+          .eq('user_id', user.id)
+          .eq('card_id', card.id);
+        if (cancelled) return;
+        mastered = new Set((data ?? []).map((row) => row.line_key));
+      }
+      if (cancelled) return;
+      const remaining = allPairs.filter((p) => !mastered.has(p.key));
+      setMasteredKeys(mastered);
+      setQueue(shuffle(remaining));
+      setMasteryLoaded(true);
+      if (remaining.length === 0) setFinished(true);
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAssociation, user, card.id, allPairs]);
 
   async function markStatus(newStatus: ProgressStatus) {
     if (!user) return;
@@ -168,9 +200,25 @@ export default function ReviewSession() {
     }
   }
 
-  function restart() {
+  async function restart() {
     if (isAssociation) {
-      setQueue(shuffle(buildPairs(card.content)));
+      const remaining = allPairs.filter((p) => !masteredKeys.has(p.key));
+      if (remaining.length === 0) {
+        // Tout est déjà mémorisé : on oublie la progression pour tout reproposer.
+        setResetting(true);
+        if (user) {
+          try {
+            await supabase.from('pair_progress').delete().eq('user_id', user.id).eq('card_id', card.id);
+          } catch {
+            // On réinitialise localement même si la suppression réseau échoue.
+          }
+        }
+        setResetting(false);
+        setMasteredKeys(new Set());
+        setQueue(shuffle(allPairs));
+      } else {
+        setQueue(shuffle(remaining));
+      }
       setDoneStack([]);
     } else {
       setIndex(-1);
@@ -191,7 +239,7 @@ export default function ReviewSession() {
     }
   }
 
-  // Moves the current pair to the "done" pile and shows the next one.
+  // Moves the current pair to the "done" pile, marks it as mastered, and shows the next one.
   function finalizeAdvance() {
     setRevealed(false);
     setDragX(0);
@@ -199,6 +247,18 @@ export default function ReviewSession() {
     const [completed, ...rest] = queue;
     setDoneStack((d) => [...d, completed]);
     setQueue(rest);
+    setMasteredKeys((prev) => new Set(prev).add(completed.key));
+    if (user) {
+      supabase
+        .from('pair_progress')
+        .upsert(
+          { user_id: user.id, card_id: card.id, line_key: completed.key },
+          { onConflict: 'user_id,card_id,line_key' },
+        )
+        .then(({ error }) => {
+          if (error) setActionError(error.message);
+        });
+    }
     if (rest.length === 0) setFinished(true);
   }
 
@@ -256,8 +316,9 @@ export default function ReviewSession() {
     if (!revealed) setRevealed(true);
   }
 
-  if (isAssociation && totalCount === 0) return <p>Cette carte n'a pas encore de contenu à réviser.</p>;
+  if (isAssociation && allPairs.length === 0) return <p>Cette carte n'a pas encore de contenu à réviser.</p>;
   if (!isAssociation && recitationLines.length === 0) return <p>Cette carte n'a pas encore de contenu à réviser.</p>;
+  if (isAssociation && !masteryLoaded) return <p>Chargement…</p>;
 
   if (finished) {
     return (
@@ -272,7 +333,11 @@ export default function ReviewSession() {
           </div>
         )}
         <p className="review-summary-count">
-          {isAssociation ? `${totalCount} paires révisées.` : `${totalCount} phrases parcourues.`}
+          {isAssociation
+            ? doneStack.length > 0
+              ? `${doneStack.length} paires révisées.`
+              : 'Toutes les paires de cette carte sont déjà mémorisées.'
+            : `${recitationLines.length} phrases parcourues.`}
         </p>
         {user ? (
           statusLoaded && (
@@ -287,7 +352,7 @@ export default function ReviewSession() {
                   Marquer "en cours"
                 </button>
               )}
-              <button className="button-secondary" disabled={saving} onClick={restart}>
+              <button className="button-secondary" disabled={saving || resetting} onClick={restart}>
                 🔁 Relancer un cycle de révision
               </button>
             </div>
@@ -295,7 +360,7 @@ export default function ReviewSession() {
         ) : (
           <div className="review-actions">
             <p className="hint">Connectez-vous pour enregistrer votre progression.</p>
-            <button className="button-secondary" onClick={restart}>
+            <button className="button-secondary" disabled={resetting} onClick={restart}>
               🔁 Relancer un cycle de révision
             </button>
           </div>
