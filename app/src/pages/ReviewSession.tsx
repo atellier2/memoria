@@ -97,6 +97,7 @@ export default function ReviewSession() {
   const [doneStack, setDoneStack] = useState<Pair[]>([]);
   const [masteredKeys, setMasteredKeys] = useState<Set<string>>(new Set());
   const [masteryLoaded, setMasteryLoaded] = useState(!isAssociation);
+  const [masteryReloadKey, setMasteryReloadKey] = useState(0);
   const [scopeChoice, setScopeChoice] = useState<ReviewScope | null>(null);
   const queueBuiltRef = useRef(false);
   const [resetting, setResetting] = useState(false);
@@ -143,7 +144,10 @@ export default function ReviewSession() {
     return () => {
       cancelled = true;
     };
-  }, [user, card.id]);
+    // `finished` : le statut a pu changer en cours de session (mémoriser une
+    // ligne met la carte en cours, côté base), on le relit plutôt que de le
+    // prédire ici.
+  }, [user, card.id, finished]);
 
   // Charge les lignes déjà mémorisées pour cette carte. On attend que
   // l'authentification soit résolue (authLoading) avant de lancer la requête,
@@ -171,7 +175,9 @@ export default function ReviewSession() {
     return () => {
       cancelled = true;
     };
-  }, [isAssociation, authLoading, user, card.id]);
+    // `masteryReloadKey` : après enregistrement d'une révision, la base a pu
+    // purger les lignes mémorisées (achèvement) — on relit l'état réel.
+  }, [isAssociation, authLoading, user, card.id, masteryReloadKey]);
 
   // Remet à zéro la file une fois qu'on change de carte.
   useEffect(() => {
@@ -196,33 +202,23 @@ export default function ReviewSession() {
     if (remaining.length === 0) setFinished(true);
   }, [isAssociation, masteryLoaded, needsScopeChoice, scopeChoice, masteredKeys, allPairs]);
 
+  // On n'exprime qu'une intention : horodatage, compteur de révisions et purge
+  // éventuelle des lignes mémorisées sont des règles portées par la base
+  // (migration 0006), pas par cet écran.
   async function markStatus(newStatus: ProgressStatus) {
     if (!user) return;
     setSaving(true);
     setActionError(null);
     try {
-      const { data: existing } = await supabase
-        .from('progress')
-        .select('review_count')
-        .eq('user_id', user.id)
-        .eq('card_id', card.id)
-        .maybeSingle();
-
-      await supabase.from('progress').upsert(
-        {
-          user_id: user.id,
-          card_id: card.id,
-          status: newStatus,
-          last_reviewed_at: new Date().toISOString(),
-          review_count: (existing?.review_count ?? 0) + 1,
-        },
-        { onConflict: 'user_id,card_id' },
-      );
-      if (newStatus === 'termine' && isAssociation) {
-        await supabase.from('pair_progress').delete().eq('user_id', user.id).eq('card_id', card.id);
-        setMasteredKeys(new Set());
+      const { data, error } = await supabase
+        .rpc('record_review', { p_card_id: card.id, p_status: newStatus })
+        .single();
+      if (error) {
+        setActionError(error.message);
+        return;
       }
-      setStatus(newStatus);
+      setStatus((data as { status: ProgressStatus }).status);
+      setMasteryReloadKey((k) => k + 1);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Erreur réseau.');
     } finally {
@@ -349,7 +345,11 @@ export default function ReviewSession() {
   if (!isAssociation && recitationLines.length === 0) return <p>Cette carte n'a pas encore de contenu à réviser.</p>;
   if (isAssociation && !masteryLoaded) return <p>Chargement…</p>;
 
-  if (isAssociation && needsScopeChoice && scopeChoice === null) {
+  // `!queueBuiltRef.current` : le périmètre se choisit au démarrage d'un cycle.
+  // Sans cette garde, mémoriser la 1re ligne d'une session commencée sans
+  // aucune ligne acquise rendrait `needsScopeChoice` vrai en cours de route et
+  // ferait réapparaître l'écran de choix par-dessus la révision en cours.
+  if (isAssociation && needsScopeChoice && scopeChoice === null && !queueBuiltRef.current) {
     return (
       <div className="panel review-summary">
         <p>

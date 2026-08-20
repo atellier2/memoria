@@ -99,9 +99,11 @@ export default function CardPage() {
   if (error) return <p className="error">{error}</p>;
   if (!card) return <p>Carte introuvable.</p>;
 
-  const canRestore = canModerate && card.status === 'deleted';
-  const canReport = card.status !== 'signalee';
-  const showActions = Boolean(user) && (canRestore || canReport);
+  // Le mélange est ouvert aux visiteurs non connectés, la modération non : on
+  // conditionne chaque action plutôt que la section entière.
+  const canRestore = Boolean(user) && canModerate && card.status === 'deleted';
+  const canReport = Boolean(user) && card.status !== 'signalee';
+  const showActions = viewOptions.canShuffle || canRestore || canReport;
 
   return (
     <div>
@@ -140,36 +142,31 @@ export default function CardPage() {
           </nav>
         }
         filters={
-          viewOptions.canHideMastered || viewOptions.canShuffle ? (
-            <>
-              {viewOptions.canHideMastered && (
-                <button
-                  type="button"
-                  className={`filter-toggle${hideMastered ? ' active' : ''}`}
-                  aria-pressed={hideMastered}
-                  onClick={() => setHideMastered(!hideMastered)}
-                >
-                  <span className="filter-toggle-check" aria-hidden="true" />
-                  Masquer les lignes déjà mémorisées
-                </button>
-              )}
-              {viewOptions.canShuffle && (
-                <button
-                  type="button"
-                  className={`filter-toggle${shuffleLines ? ' active' : ''}`}
-                  aria-pressed={shuffleLines}
-                  onClick={() => setShuffleLines(!shuffleLines)}
-                >
-                  <span className="filter-toggle-check" aria-hidden="true" />
-                  Mélanger les lignes
-                </button>
-              )}
-            </>
+          viewOptions.canHideMastered ? (
+            <button
+              type="button"
+              className={`filter-toggle${hideMastered ? ' active' : ''}`}
+              aria-pressed={hideMastered}
+              onClick={() => setHideMastered(!hideMastered)}
+            >
+              <span className="filter-toggle-check" aria-hidden="true" />
+              Masquer les lignes déjà mémorisées
+            </button>
           ) : undefined
         }
         actions={
           showActions ? (
             <>
+              {viewOptions.canShuffle && (
+                <button
+                  type="button"
+                  className={`filter-toggle filter-toggle-plain${shuffleLines ? ' active' : ''}`}
+                  aria-pressed={shuffleLines}
+                  onClick={() => setShuffleLines(!shuffleLines)}
+                >
+                  🔀 Mélanger les lignes
+                </button>
+              )}
               {canRestore && (
                 <button type="button" onClick={() => changeStatus('normal')} disabled={statusSaving}>
                   ♻️ Restaurer

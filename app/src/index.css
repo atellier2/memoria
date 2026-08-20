@@ -333,6 +333,12 @@ button:disabled {
   color: var(--accent-dark);
 }
 
+/* Variante sans case à cocher : un simple bouton pilule qui s'allume à l'état actif. */
+.filter-toggle-plain {
+  padding: 0.55rem 1rem;
+  justify-content: center;
+}
+
 .filter-toggle-check {
   width: 18px;
   height: 18px;
