@@ -4,10 +4,9 @@ import type { CardOutletContext } from './CardPage';
 import { parseAssociation, parseRecitation, pairLineKey } from '../lib/parseContent';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import OptionsDrawer from '../components/OptionsDrawer';
 
 export default function CardView() {
-  const { card } = useOutletContext<CardOutletContext>();
+  const { card, hideMastered, setViewFilterAvailable } = useOutletContext<CardOutletContext>();
   const { user, loading: authLoading } = useAuth();
   const isAssociation = card.type === 'association';
 
@@ -19,8 +18,6 @@ export default function CardView() {
 
   const [masteredKeys, setMasteredKeys] = useState<Set<string>>(new Set());
   const [masteryLoaded, setMasteryLoaded] = useState(false);
-  const [hideMastered, setHideMastered] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -78,6 +75,14 @@ export default function CardView() {
   const showMasteryUi = user && isAssociation && masteryLoaded && pairs.length > 0;
   const visiblePairs = hideMastered ? pairs.filter((p) => !masteredKeys.has(p.key)) : pairs;
 
+  // Le toggle vit dans le drawer de CardPage : on lui signale seulement s'il y
+  // a quelque chose à masquer, et on le retire en quittant cet onglet.
+  const filterAvailable = Boolean(showMasteryUi && masteredCount > 0);
+  useEffect(() => {
+    setViewFilterAvailable(filterAvailable);
+    return () => setViewFilterAvailable(false);
+  }, [filterAvailable, setViewFilterAvailable]);
+
   return (
     <div className="panel">
       <div className="card-meta">
@@ -91,35 +96,6 @@ export default function CardView() {
           </>
         )}
       </div>
-
-      {showMasteryUi && masteredCount > 0 && (
-        <button
-          type="button"
-          className="options-trigger options-trigger-floating"
-          onClick={() => setDrawerOpen(true)}
-          aria-haspopup="dialog"
-          aria-label="Filtres"
-        >
-          ⋮
-        </button>
-      )}
-
-      <OptionsDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        title="Filtres"
-        filters={
-          <button
-            type="button"
-            className={`filter-toggle${hideMastered ? ' active' : ''}`}
-            aria-pressed={hideMastered}
-            onClick={() => setHideMastered((v) => !v)}
-          >
-            <span className="filter-toggle-check" aria-hidden="true" />
-            Masquer les lignes déjà mémorisées
-          </button>
-        }
-      />
 
       {isAssociation ? (
         pairs.length === 0 ? (

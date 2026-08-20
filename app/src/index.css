@@ -397,18 +397,6 @@ button:disabled {
   box-shadow: var(--shadow-md);
 }
 
-.mode-tabs-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-
-.mode-tabs-row .mode-tabs {
-  margin-bottom: 0;
-}
-
 .drawer-backdrop {
   position: fixed;
   inset: 0;
@@ -508,6 +496,20 @@ button:disabled {
   margin-bottom: 1.5rem;
   background: var(--bg-alt);
   border-radius: 999px;
+}
+
+.mode-tabs-vertical {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 0;
+  border-radius: 1.1rem;
+}
+
+.mode-tabs-vertical a,
+.mode-tabs-vertical button {
+  width: 100%;
+  text-align: left;
 }
 
 .mode-tabs a,

@@ -11,6 +11,11 @@ export interface CardOutletContext {
   onDeleteCard: () => void;
   deletingCard: boolean;
   canDelete: boolean;
+  // Le filtre de lignes de CardView vit dans le drawer de cette page : CardView
+  // signale sa disponibilité et lit l'état, mais ne rend plus son propre menu.
+  hideMastered: boolean;
+  setHideMastered: (value: boolean) => void;
+  setViewFilterAvailable: (value: boolean) => void;
 }
 
 const STATUS_LABELS: Record<CardStatus, string> = {
@@ -29,6 +34,8 @@ export default function CardPage() {
   const [statusError, setStatusError] = useState<string | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [hideMastered, setHideMastered] = useState(false);
+  const [viewFilterAvailable, setViewFilterAvailable] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,6 +89,10 @@ export default function CardPage() {
   if (error) return <p className="error">{error}</p>;
   if (!card) return <p>Carte introuvable.</p>;
 
+  const canRestore = canModerate && card.status === 'deleted';
+  const canReport = card.status !== 'signalee';
+  const showActions = Boolean(user) && (canRestore || canReport);
+
   return (
     <div>
       <h2>{card.title}</h2>
@@ -90,49 +101,68 @@ export default function CardPage() {
           <span className={`badge badge-cardstatus-${card.status}`}>{STATUS_LABELS[card.status]}</span>
         </div>
       )}
-      <div className="mode-tabs-row">
-        <nav className="mode-tabs">
-          <NavLink to={`/cards/${card.id}`} end>
-            👁️ Visualiser
-          </NavLink>
-          {user && <NavLink to={`/cards/${card.id}/edit`}>✏️ Éditer</NavLink>}
-          <NavLink to={`/cards/${card.id}/review`}>🎯 Réviser</NavLink>
-        </nav>
-        {user && (
-          <button
-            type="button"
-            className="options-trigger"
-            onClick={() => setDrawerOpen(true)}
-            aria-haspopup="dialog"
-            aria-label="Actions"
-          >
-            ⋮
-          </button>
-        )}
-      </div>
+      <button
+        type="button"
+        className="options-trigger options-trigger-floating"
+        onClick={() => setDrawerOpen(true)}
+        aria-haspopup="dialog"
+        aria-label="Options"
+      >
+        ⋮
+      </button>
       <OptionsDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        title="Actions"
+        title="Options"
+        navigation={
+          <nav className="mode-tabs mode-tabs-vertical">
+            <NavLink to={`/cards/${card.id}`} end onClick={() => setDrawerOpen(false)}>
+              👁️ Visualiser
+            </NavLink>
+            {user && (
+              <NavLink to={`/cards/${card.id}/edit`} onClick={() => setDrawerOpen(false)}>
+                ✏️ Éditer
+              </NavLink>
+            )}
+            <NavLink to={`/cards/${card.id}/review`} onClick={() => setDrawerOpen(false)}>
+              🎯 Réviser
+            </NavLink>
+          </nav>
+        }
+        filters={
+          viewFilterAvailable ? (
+            <button
+              type="button"
+              className={`filter-toggle${hideMastered ? ' active' : ''}`}
+              aria-pressed={hideMastered}
+              onClick={() => setHideMastered(!hideMastered)}
+            >
+              <span className="filter-toggle-check" aria-hidden="true" />
+              Masquer les lignes déjà mémorisées
+            </button>
+          ) : undefined
+        }
         actions={
-          <>
-            {canModerate && card.status === 'deleted' && (
-              <button type="button" onClick={() => changeStatus('normal')} disabled={statusSaving}>
-                ♻️ Restaurer
-              </button>
-            )}
-            {card.status !== 'signalee' && (
-              <button
-                type="button"
-                className="status-action-subtle"
-                onClick={() => changeStatus('signalee')}
-                disabled={statusSaving}
-              >
-                🚩 Signaler
-              </button>
-            )}
-            {statusError && <p className="error">{statusError}</p>}
-          </>
+          showActions ? (
+            <>
+              {canRestore && (
+                <button type="button" onClick={() => changeStatus('normal')} disabled={statusSaving}>
+                  ♻️ Restaurer
+                </button>
+              )}
+              {canReport && (
+                <button
+                  type="button"
+                  className="status-action-subtle"
+                  onClick={() => changeStatus('signalee')}
+                  disabled={statusSaving}
+                >
+                  🚩 Signaler
+                </button>
+              )}
+              {statusError && <p className="error">{statusError}</p>}
+            </>
+          ) : undefined
         }
       />
       <Outlet
@@ -143,6 +173,9 @@ export default function CardPage() {
             onDeleteCard: () => changeStatus('deleted'),
             deletingCard: statusSaving,
             canDelete: canModerate,
+            hideMastered,
+            setHideMastered,
+            setViewFilterAvailable,
           } satisfies CardOutletContext
         }
       />
