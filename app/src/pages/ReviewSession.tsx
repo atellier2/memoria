@@ -6,7 +6,6 @@ import { useAuth } from '../context/AuthContext';
 import { parseAssociation, parseRecitation, pairLineKey, shuffle } from '../lib/parseContent';
 import type { CardOutletContext } from './CardPage';
 
-const SWIPE_THRESHOLD = 80;
 const FLING_DISTANCE = 500;
 const FLING_DURATION = 200;
 
@@ -111,10 +110,9 @@ export default function ReviewSession() {
   const [status, setStatus] = useState<ProgressStatus | null>(null);
   const [statusLoaded, setStatusLoaded] = useState(false);
 
-  const [dragX, setDragX] = useState(0);
-  const [dragging, setDragging] = useState(false);
+  // Offset d'envol de la carte lors du passage à la suivante (boutons 👍/👎).
+  const [flyX, setFlyX] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
-  const dragStartX = useRef(0);
   const currentLineRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
@@ -248,8 +246,7 @@ export default function ReviewSession() {
     } else {
       setIndex(-1);
     }
-    setDragX(0);
-    setDragging(false);
+    setFlyX(0);
     setIsAnimating(false);
     setRevealed(false);
     setFinished(false);
@@ -267,7 +264,7 @@ export default function ReviewSession() {
   // Moves the current pair to the "done" pile, marks it as mastered, and shows the next one.
   function finalizeAdvance() {
     setRevealed(false);
-    setDragX(0);
+    setFlyX(0);
     setIsAnimating(false);
     const [completed, ...rest] = queue;
     setDoneStack((d) => [...d, completed]);
@@ -291,7 +288,7 @@ export default function ReviewSession() {
   // further down) and shows the next one.
   function finalizeRequeue() {
     setRevealed(false);
-    setDragX(0);
+    setFlyX(0);
     setIsAnimating(false);
     const [completed, ...rest] = queue;
     const insertAt = rest.length === 0 ? 0 : 1 + Math.floor(Math.random() * rest.length);
@@ -299,42 +296,17 @@ export default function ReviewSession() {
   }
 
   function completeCurrent() {
-    if (dragging || isAnimating) return;
+    if (isAnimating) return;
     setIsAnimating(true);
-    setDragX(FLING_DISTANCE);
+    setFlyX(FLING_DISTANCE);
     window.setTimeout(finalizeAdvance, FLING_DURATION);
   }
 
   function requeueCurrent() {
-    if (dragging || isAnimating) return;
+    if (isAnimating) return;
     setIsAnimating(true);
-    setDragX(-FLING_DISTANCE);
+    setFlyX(-FLING_DISTANCE);
     window.setTimeout(finalizeRequeue, FLING_DURATION);
-  }
-
-  function handleCardPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (!revealed || isAnimating || (e.target as HTMLElement).closest('button')) return;
-    dragStartX.current = e.clientX;
-    setDragging(true);
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }
-
-  function handleCardPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (!dragging) return;
-    setDragX(e.clientX - dragStartX.current);
-  }
-
-  function handleCardPointerUp() {
-    if (!dragging) return;
-    setDragging(false);
-    if (Math.abs(dragX) > SWIPE_THRESHOLD) {
-      const direction = dragX > 0 ? 1 : -1;
-      setIsAnimating(true);
-      setDragX(direction * FLING_DISTANCE);
-      window.setTimeout(finalizeAdvance, FLING_DURATION);
-    } else {
-      setDragX(0);
-    }
   }
 
   function handleCardClick() {
@@ -460,15 +432,11 @@ export default function ReviewSession() {
       <div className="review-card-viewport">
         <div
           key={current.id}
-          className={`review-card${dragging ? ' review-card-dragging' : ''}`}
+          className="review-card"
           style={{
-            transform: `translateX(${dragX}px) rotate(${dragX / 18}deg)`,
-            opacity: 1 - Math.min(Math.abs(dragX) / FLING_DISTANCE, 0.7),
+            transform: `translateX(${flyX}px) rotate(${flyX / 18}deg)`,
+            opacity: 1 - Math.min(Math.abs(flyX) / FLING_DISTANCE, 0.7),
           }}
-          onPointerDown={handleCardPointerDown}
-          onPointerMove={handleCardPointerMove}
-          onPointerUp={handleCardPointerUp}
-          onPointerCancel={handleCardPointerUp}
           onClick={handleCardClick}
         >
           <p className="review-prompt">{current.prompt}</p>
@@ -519,7 +487,6 @@ export default function ReviewSession() {
           )}
         </div>
       </div>
-      {revealed && <p className="review-hint-swipe">Glissez la carte ou appuyez sur → pour continuer</p>}
     </div>
   );
 }

@@ -825,15 +825,9 @@ button:disabled {
   padding: 2.25rem 2.25rem 3.25rem;
   background: var(--bg-alt);
   border-radius: var(--radius);
-  cursor: grab;
+  cursor: pointer;
   user-select: none;
-  touch-action: pan-y;
   transition: transform 0.25s ease, opacity 0.25s ease;
-}
-
-.review-card-dragging {
-  transition: none;
-  cursor: grabbing;
 }
 
 .review-card-flip {
@@ -924,12 +918,6 @@ button:disabled {
 .review-card-judge-yes {
   background: var(--green-soft);
   color: var(--green);
-}
-
-.review-hint-swipe {
-  text-align: center;
-  color: var(--muted);
-  font-size: 0.85rem;
 }
 
 .review-prompt {
