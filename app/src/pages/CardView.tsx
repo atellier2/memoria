@@ -80,30 +80,29 @@ export default function CardView() {
 
   return (
     <div className="panel">
-      <div className="card-meta-row">
-        <div className="card-meta">
-          <span className={`badge badge-${card.type}`}>{isAssociation ? 'Association' : 'Récitation'}</span>
-          <span className="badge">{card.lang}</span>
-          <span className="badge">{card.visibility}</span>
-          {showMasteryUi && (
-            <>
-              <span className="badge badge-mastered-count">{masteredCount} mémorisées</span>
-              <span className="badge">{remainingCount} à réviser</span>
-            </>
-          )}
-        </div>
-        {showMasteryUi && masteredCount > 0 && (
-          <button
-            type="button"
-            className="options-trigger"
-            onClick={() => setDrawerOpen(true)}
-            aria-haspopup="dialog"
-            aria-label="Filtres"
-          >
-            ⋮
-          </button>
+      <div className="card-meta">
+        <span className={`badge badge-${card.type}`}>{isAssociation ? 'Association' : 'Récitation'}</span>
+        <span className="badge">{card.lang}</span>
+        <span className="badge">{card.visibility}</span>
+        {showMasteryUi && (
+          <>
+            <span className="badge badge-mastered-count">{masteredCount} mémorisées</span>
+            <span className="badge">{remainingCount} à réviser</span>
+          </>
         )}
       </div>
+
+      {showMasteryUi && masteredCount > 0 && (
+        <button
+          type="button"
+          className="options-trigger options-trigger-floating"
+          onClick={() => setDrawerOpen(true)}
+          aria-haspopup="dialog"
+          aria-label="Filtres"
+        >
+          ⋮
+        </button>
+      )}
 
       <OptionsDrawer
         open={drawerOpen}

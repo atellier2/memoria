@@ -384,6 +384,19 @@ button:disabled {
   box-shadow: none;
 }
 
+.options-trigger-floating {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 30;
+  width: 56px;
+  height: 56px;
+  font-size: 1.4rem;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+
 .mode-tabs-row {
   display: flex;
   align-items: center;
@@ -394,17 +407,6 @@ button:disabled {
 
 .mode-tabs-row .mode-tabs {
   margin-bottom: 0;
-}
-
-.card-meta-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.card-meta-row .card-meta {
-  flex: 1;
 }
 
 .drawer-backdrop {
