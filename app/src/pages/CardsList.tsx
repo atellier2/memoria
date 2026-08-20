@@ -24,6 +24,10 @@ export default function CardsList() {
     async function load() {
       setLoading(true);
       setError(null);
+      // La progression appartient à l'utilisateur courant : on repart d'une
+      // table vide, sinon une déconnexion laisserait les badges "en cours" /
+      // "terminé" du compte précédent sur la liste.
+      setProgressByCard({});
       try {
         const { data, error } = await supabase
           .from('cards')
@@ -68,7 +72,11 @@ export default function CardsList() {
   }, [user]);
 
   const filteredCards = useMemo(() => {
-    let result = typeFilter === 'all' ? cards : cards.filter((card) => card.type === typeFilter);
+    // Une carte "non listée" est lisible par lien direct mais n'apparaît pas
+    // dans la liste — sauf pour son propriétaire, qui doit pouvoir la
+    // retrouver.
+    let result = cards.filter((card) => card.visibility !== 'unlisted' || card.owner_id === user?.id);
+    if (typeFilter !== 'all') result = result.filter((card) => card.type === typeFilter);
     if (user && onlyInProgress) {
       result = result.filter((card) => progressByCard[card.id]?.status === 'en_cours');
     }
@@ -153,12 +161,12 @@ export default function CardsList() {
             ? "Aucune carte pour l'instant."
             : onlyInProgress && user
               ? 'Aucune carte en cours pour ce filtre.'
-              : 'Aucune carte de ce type.'}
+              : 'Aucune carte ne correspond à ces filtres.'}
         </p>
       )}
       <ul className="card-list">
         {filteredCards.map((card) => {
-          const status = progressByCard[card.id]?.status;
+          const status = user ? progressByCard[card.id]?.status : undefined;
           return (
             <li key={card.id} className="card-list-item">
               <Link to={`/cards/${card.id}`}>
