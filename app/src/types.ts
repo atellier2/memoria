@@ -26,6 +26,13 @@ export interface Progress {
   review_count: number;
 }
 
+export interface PairProgress {
+  user_id: string;
+  card_id: string;
+  line_key: string;
+  mastered_at: string;
+}
+
 export interface CardRevision {
   id: number;
   card_id: string;

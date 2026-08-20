@@ -32,6 +32,12 @@ export function parseRecitation(content: string): RecitationLine[] {
     .map((text) => ({ text }));
 }
 
+// Identifiant stable d'une paire pour la mémorisation par ligne (pair_progress) :
+// dépend du contenu, pas de la position, pour survivre aux réordonnancements.
+export function pairLineKey(pair: AssociationPair): string {
+  return `${pair.front}|${pair.back}`;
+}
+
 export function shuffle<T>(items: T[]): T[] {
   const result = [...items];
   for (let i = result.length - 1; i > 0; i--) {

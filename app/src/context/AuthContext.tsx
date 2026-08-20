@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import type { UserRole } from '../types';
 
 interface AuthContextValue {
   session: Session | null;
   user: User | null;
+  role: UserRole | null;
   loading: boolean;
   signInWithEmail: (email: string) => Promise<{ error: string | null }>;
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -17,6 +19,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<UserRole | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -30,6 +33,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) {
+      setRole(null);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setRole(data?.role ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
 
   async function signInWithEmail(email: string) {
     const redirectTo = new URL(import.meta.env.BASE_URL, window.location.origin).toString();
@@ -64,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         session,
         user: session?.user ?? null,
+        role,
         loading,
         signInWithEmail,
         signInWithPassword,
