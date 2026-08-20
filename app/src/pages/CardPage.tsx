@@ -11,12 +11,21 @@ export interface CardOutletContext {
   onDeleteCard: () => void;
   deletingCard: boolean;
   canDelete: boolean;
-  // Le filtre de lignes de CardView vit dans le drawer de cette page : CardView
-  // signale sa disponibilité et lit l'état, mais ne rend plus son propre menu.
+  // Les options d'affichage de CardView vivent dans le drawer de cette page :
+  // CardView signale lesquelles s'appliquent et lit leur état, mais ne rend
+  // plus son propre menu.
   hideMastered: boolean;
   setHideMastered: (value: boolean) => void;
-  setViewFilterAvailable: (value: boolean) => void;
+  shuffleLines: boolean;
+  setViewOptions: (options: ViewOptions) => void;
 }
+
+export interface ViewOptions {
+  canHideMastered: boolean;
+  canShuffle: boolean;
+}
+
+const NO_VIEW_OPTIONS: ViewOptions = { canHideMastered: false, canShuffle: false };
 
 const STATUS_LABELS: Record<CardStatus, string> = {
   normal: 'Normale',
@@ -35,7 +44,8 @@ export default function CardPage() {
   const [statusSaving, setStatusSaving] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [hideMastered, setHideMastered] = useState(false);
-  const [viewFilterAvailable, setViewFilterAvailable] = useState(false);
+  const [shuffleLines, setShuffleLines] = useState(false);
+  const [viewOptions, setViewOptions] = useState<ViewOptions>(NO_VIEW_OPTIONS);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,16 +140,31 @@ export default function CardPage() {
           </nav>
         }
         filters={
-          viewFilterAvailable ? (
-            <button
-              type="button"
-              className={`filter-toggle${hideMastered ? ' active' : ''}`}
-              aria-pressed={hideMastered}
-              onClick={() => setHideMastered(!hideMastered)}
-            >
-              <span className="filter-toggle-check" aria-hidden="true" />
-              Masquer les lignes déjà mémorisées
-            </button>
+          viewOptions.canHideMastered || viewOptions.canShuffle ? (
+            <>
+              {viewOptions.canHideMastered && (
+                <button
+                  type="button"
+                  className={`filter-toggle${hideMastered ? ' active' : ''}`}
+                  aria-pressed={hideMastered}
+                  onClick={() => setHideMastered(!hideMastered)}
+                >
+                  <span className="filter-toggle-check" aria-hidden="true" />
+                  Masquer les lignes déjà mémorisées
+                </button>
+              )}
+              {viewOptions.canShuffle && (
+                <button
+                  type="button"
+                  className={`filter-toggle${shuffleLines ? ' active' : ''}`}
+                  aria-pressed={shuffleLines}
+                  onClick={() => setShuffleLines(!shuffleLines)}
+                >
+                  <span className="filter-toggle-check" aria-hidden="true" />
+                  Mélanger les lignes
+                </button>
+              )}
+            </>
           ) : undefined
         }
         actions={
@@ -175,7 +200,8 @@ export default function CardPage() {
             canDelete: canModerate,
             hideMastered,
             setHideMastered,
-            setViewFilterAvailable,
+            shuffleLines,
+            setViewOptions,
           } satisfies CardOutletContext
         }
       />

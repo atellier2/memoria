@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import type { CardOutletContext } from './CardPage';
-import { parseAssociation, parseRecitation, pairLineKey } from '../lib/parseContent';
+import { parseAssociation, parseRecitation, pairLineKey, shuffle } from '../lib/parseContent';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 
 export default function CardView() {
-  const { card, hideMastered, setViewFilterAvailable } = useOutletContext<CardOutletContext>();
+  const { card, hideMastered, shuffleLines, setViewOptions } = useOutletContext<CardOutletContext>();
   const { user, loading: authLoading } = useAuth();
   const isAssociation = card.type === 'association';
 
@@ -73,15 +73,21 @@ export default function CardView() {
   const masteredCount = pairs.filter((p) => masteredKeys.has(p.key)).length;
   const remainingCount = pairs.length - masteredCount;
   const showMasteryUi = user && isAssociation && masteryLoaded && pairs.length > 0;
-  const visiblePairs = hideMastered ? pairs.filter((p) => !masteredKeys.has(p.key)) : pairs;
 
-  // Le toggle vit dans le drawer de CardPage : on lui signale seulement s'il y
-  // a quelque chose à masquer, et on le retire en quittant cet onglet.
-  const filterAvailable = Boolean(showMasteryUi && masteredCount > 0);
+  // Mémoïsé pour que l'ordre reste stable entre deux rendus : sans ça, chaque
+  // clic sur une ligne rebattrait les cartes. Réactiver le mélange recalcule
+  // le memo, et donne donc un nouvel ordre.
+  const orderedPairs = useMemo(() => (shuffleLines ? shuffle(pairs) : pairs), [shuffleLines, pairs]);
+  const visiblePairs = hideMastered ? orderedPairs.filter((p) => !masteredKeys.has(p.key)) : orderedPairs;
+
+  // Les toggles vivent dans le drawer de CardPage : on lui signale seulement
+  // lesquels s'appliquent ici, et on les retire en quittant cet onglet.
+  const canHideMastered = Boolean(showMasteryUi && masteredCount > 0);
+  const canShuffle = isAssociation && pairs.length > 1;
   useEffect(() => {
-    setViewFilterAvailable(filterAvailable);
-    return () => setViewFilterAvailable(false);
-  }, [filterAvailable, setViewFilterAvailable]);
+    setViewOptions({ canHideMastered, canShuffle });
+    return () => setViewOptions({ canHideMastered: false, canShuffle: false });
+  }, [canHideMastered, canShuffle, setViewOptions]);
 
   return (
     <div className="panel">
