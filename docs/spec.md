@@ -272,6 +272,15 @@ lit leur état dans le contexte d'`Outlet`.
 - **`review_count` et `last_reviewed_at` ne sont affichés nulle part** : ils sont tenus à jour par
   R4 mais aucun écran ne les expose encore.
 - **Aucun test automatisé** : le filet est le typecheck (`tsc -b`) et le linter.
+- **Avertissements du linter Supabase assumés** : `current_user_role()` reste exécutable en RPC
+  par `anon` et `authenticated` — c'est nécessaire, les policies l'évaluent avec les droits de
+  l'appelant, et elle ne renvoie jamais que le rôle de celui qui appelle. Restent aussi, en
+  attente d'un volume qui les justifie, les optimisations `auth_rls_initplan`
+  (`auth.uid()` → `(select auth.uid())` dans chaque policy) et les index de clés étrangères
+  (`cards.owner_id`, `cards.updated_by`, `progress.card_id`, `pair_progress.card_id`,
+  `card_revisions.edited_by`).
+- **Protection contre les mots de passe compromis désactivée** : option d'Auth (vérification
+  HaveIBeenPwned), à activer dans le dashboard Supabase — elle ne relève d'aucune migration.
 
 ---
 

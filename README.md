@@ -32,6 +32,7 @@ Dans l'éditeur SQL du projet Supabase, exécutez les migrations **dans l'ordre 
 | `0007_fix_roles_moderation_and_visibility.sql` | Corrections C1–C7 (voir `docs/spec.md` §10) |
 
 Les migrations ne sont pas idempotentes : elles s'appliquent une fois chacune, dans l'ordre.
+`0001` à `0007` sont appliquées sur le projet Supabase `memoria`.
 
 ### 2. Frontend
 
