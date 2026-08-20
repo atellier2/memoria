@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import type { ProgressStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { parseAssociation, parseRecitation, pairLineKey, shuffle } from '../lib/parseContent';
+import { ensureCardInProgress } from '../lib/progress';
 import type { CardOutletContext } from './CardPage';
 
 const SWIPE_THRESHOLD = 80;
@@ -278,14 +279,21 @@ export default function ReviewSession() {
     setQueue(rest);
     setMasteredKeys((prev) => new Set(prev).add(completed.key));
     if (user) {
+      const userId = user.id;
       supabase
         .from('pair_progress')
         .upsert(
-          { user_id: user.id, card_id: card.id, line_key: completed.key },
+          { user_id: userId, card_id: card.id, line_key: completed.key },
           { onConflict: 'user_id,card_id,line_key' },
         )
         .then(({ error }) => {
-          if (error) setActionError(error.message);
+          if (error) {
+            setActionError(error.message);
+            return;
+          }
+          // Réviser une paire suffit à considérer la carte comme en cours,
+          // même si la session est abandonnée avant l'écran de fin.
+          ensureCardInProgress(userId, card.id).then(() => setStatus('en_cours'));
         });
     }
     if (rest.length === 0) setFinished(true);
