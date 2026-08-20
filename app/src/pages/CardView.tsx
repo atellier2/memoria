@@ -3,7 +3,6 @@ import { useOutletContext } from 'react-router-dom';
 import type { CardOutletContext } from './CardPage';
 import { parseAssociation, parseRecitation, pairLineKey, shuffle } from '../lib/parseContent';
 import { supabase } from '../lib/supabase';
-import { ensureCardInProgress } from '../lib/progress';
 import { useAuth } from '../context/AuthContext';
 
 export default function CardView() {
@@ -68,11 +67,7 @@ export default function CardView() {
         else next.delete(key);
         return next;
       });
-      return;
     }
-    // Démarquer une ligne ne change pas le statut de la carte : on ne
-    // "dé-commence" pas une étude déjà entamée.
-    if (!wasMastered) await ensureCardInProgress(user.id, card.id);
   }
 
   const masteredCount = pairs.filter((p) => masteredKeys.has(p.key)).length;
