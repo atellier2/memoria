@@ -17,6 +17,8 @@ interface Pair {
   answer: string;
 }
 
+type ReviewScope = 'failures' | 'all';
+
 function buildPairs(content: string): Pair[] {
   return parseAssociation(content).map((p, i) => ({ id: i, key: pairLineKey(p), prompt: p.front, answer: p.back }));
 }
@@ -87,7 +89,7 @@ function DeckPile({ count, label, variant }: { count: number; label: string; var
 
 export default function ReviewSession() {
   const { card } = useOutletContext<CardOutletContext>();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const isAssociation = card.type === 'association';
 
   const allPairs = useMemo(() => (isAssociation ? buildPairs(card.content) : []), [isAssociation, card.content]);
@@ -95,6 +97,8 @@ export default function ReviewSession() {
   const [doneStack, setDoneStack] = useState<Pair[]>([]);
   const [masteredKeys, setMasteredKeys] = useState<Set<string>>(new Set());
   const [masteryLoaded, setMasteryLoaded] = useState(!isAssociation);
+  const [scopeChoice, setScopeChoice] = useState<ReviewScope | null>(null);
+  const queueBuiltRef = useRef(false);
   const [resetting, setResetting] = useState(false);
   const recitationLines = useMemo(() => (isAssociation ? [] : parseRecitation(card.content)), [isAssociation, card.content]);
   const [index, setIndex] = useState(-1);
@@ -141,10 +145,12 @@ export default function ReviewSession() {
     };
   }, [user, card.id]);
 
-  // Charge les lignes déjà mémorisées et initialise la file de révision avec
-  // uniquement ce qui reste à réviser.
+  // Charge les lignes déjà mémorisées pour cette carte. On attend que
+  // l'authentification soit résolue (authLoading) avant de lancer la requête,
+  // pour ne jamais construire la file en pensant à tort qu'il n'y a
+  // personne de connecté.
   useEffect(() => {
-    if (!isAssociation) return;
+    if (!isAssociation || authLoading) return;
     let cancelled = false;
     async function load() {
       let mastered = new Set<string>();
@@ -158,17 +164,37 @@ export default function ReviewSession() {
         mastered = new Set((data ?? []).map((row) => row.line_key));
       }
       if (cancelled) return;
-      const remaining = allPairs.filter((p) => !mastered.has(p.key));
       setMasteredKeys(mastered);
-      setQueue(shuffle(remaining));
       setMasteryLoaded(true);
-      if (remaining.length === 0) setFinished(true);
     }
     load();
     return () => {
       cancelled = true;
     };
-  }, [isAssociation, user, card.id, allPairs]);
+  }, [isAssociation, authLoading, user, card.id]);
+
+  // Remet à zéro la file une fois qu'on change de carte.
+  useEffect(() => {
+    queueBuiltRef.current = false;
+  }, [card.id]);
+
+  const remainingCount = useMemo(
+    () => allPairs.filter((p) => !masteredKeys.has(p.key)).length,
+    [allPairs, masteredKeys],
+  );
+  const needsScopeChoice = masteryLoaded && remainingCount > 0 && remainingCount < allPairs.length;
+
+  // Construit la file de révision une seule fois, une fois la mémorisation
+  // connue et (si nécessaire) le choix de périmètre fait par l'utilisateur.
+  useEffect(() => {
+    if (!isAssociation || !masteryLoaded || queueBuiltRef.current) return;
+    if (needsScopeChoice && scopeChoice === null) return;
+    const scope: ReviewScope = needsScopeChoice ? scopeChoice! : 'failures';
+    const remaining = scope === 'all' ? allPairs : allPairs.filter((p) => !masteredKeys.has(p.key));
+    queueBuiltRef.current = true;
+    setQueue(shuffle(remaining));
+    if (remaining.length === 0) setFinished(true);
+  }, [isAssociation, masteryLoaded, needsScopeChoice, scopeChoice, masteredKeys, allPairs]);
 
   async function markStatus(newStatus: ProgressStatus) {
     if (!user) return;
@@ -192,6 +218,10 @@ export default function ReviewSession() {
         },
         { onConflict: 'user_id,card_id' },
       );
+      if (newStatus === 'termine' && isAssociation) {
+        await supabase.from('pair_progress').delete().eq('user_id', user.id).eq('card_id', card.id);
+        setMasteredKeys(new Set());
+      }
       setStatus(newStatus);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Erreur réseau.');
@@ -202,8 +232,7 @@ export default function ReviewSession() {
 
   async function restart() {
     if (isAssociation) {
-      const remaining = allPairs.filter((p) => !masteredKeys.has(p.key));
-      if (remaining.length === 0) {
+      if (remainingCount === 0) {
         // Tout est déjà mémorisé : on oublie la progression pour tout reproposer.
         setResetting(true);
         if (user) {
@@ -215,10 +244,10 @@ export default function ReviewSession() {
         }
         setResetting(false);
         setMasteredKeys(new Set());
-        setQueue(shuffle(allPairs));
-      } else {
-        setQueue(shuffle(remaining));
       }
+      setScopeChoice(null);
+      queueBuiltRef.current = false;
+      setQueue([]);
       setDoneStack([]);
     } else {
       setIndex(-1);
@@ -319,6 +348,27 @@ export default function ReviewSession() {
   if (isAssociation && allPairs.length === 0) return <p>Cette carte n'a pas encore de contenu à réviser.</p>;
   if (!isAssociation && recitationLines.length === 0) return <p>Cette carte n'a pas encore de contenu à réviser.</p>;
   if (isAssociation && !masteryLoaded) return <p>Chargement…</p>;
+
+  if (isAssociation && needsScopeChoice && scopeChoice === null) {
+    return (
+      <div className="panel review-summary">
+        <p>
+          Cette carte a des lignes déjà mémorisées et d'autres qu'il reste à réviser.
+        </p>
+        <div className="review-actions">
+          <button onClick={() => setScopeChoice('failures')}>Réviser uniquement ce qui reste</button>
+          <button className="button-secondary" onClick={() => setScopeChoice('all')}>
+            Tout réviser
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // La file est construite par un effet séparé, une fois le périmètre connu :
+  // le temps qu'il tourne, on affiche un état de chargement plutôt que de
+  // rendre une file vide.
+  if (isAssociation && !finished && queue.length === 0) return <p>Chargement…</p>;
 
   if (finished) {
     return (
