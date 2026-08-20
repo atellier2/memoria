@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import type { CardOutletContext } from './CardPage';
 import { parseAssociation, parseRecitation, pairLineKey } from '../lib/parseContent';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import OptionsDrawer from '../components/OptionsDrawer';
 
 export default function CardView() {
   const { card } = useOutletContext<CardOutletContext>();
@@ -19,9 +20,8 @@ export default function CardView() {
   const [masteredKeys, setMasteredKeys] = useState<Set<string>>(new Set());
   const [masteryLoaded, setMasteryLoaded] = useState(false);
   const [hideMastered, setHideMastered] = useState(false);
-  const [fabOpen, setFabOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const fabRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isAssociation || authLoading) return;
@@ -46,27 +46,6 @@ export default function CardView() {
       cancelled = true;
     };
   }, [isAssociation, authLoading, user, card.id]);
-
-  useEffect(() => {
-    if (!fabOpen) return;
-
-    function handlePointerDown(e: PointerEvent) {
-      if (fabRef.current && !fabRef.current.contains(e.target as Node)) {
-        setFabOpen(false);
-      }
-    }
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setFabOpen(false);
-    }
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [fabOpen]);
 
   async function toggleMastered(key: string) {
     if (!user) return;
@@ -101,17 +80,47 @@ export default function CardView() {
 
   return (
     <div className="panel">
-      <div className="card-meta">
-        <span className={`badge badge-${card.type}`}>{isAssociation ? 'Association' : 'Récitation'}</span>
-        <span className="badge">{card.lang}</span>
-        <span className="badge">{card.visibility}</span>
-        {showMasteryUi && (
-          <>
-            <span className="badge badge-mastered-count">{masteredCount} mémorisées</span>
-            <span className="badge">{remainingCount} à réviser</span>
-          </>
+      <div className="card-meta-row">
+        <div className="card-meta">
+          <span className={`badge badge-${card.type}`}>{isAssociation ? 'Association' : 'Récitation'}</span>
+          <span className="badge">{card.lang}</span>
+          <span className="badge">{card.visibility}</span>
+          {showMasteryUi && (
+            <>
+              <span className="badge badge-mastered-count">{masteredCount} mémorisées</span>
+              <span className="badge">{remainingCount} à réviser</span>
+            </>
+          )}
+        </div>
+        {showMasteryUi && masteredCount > 0 && (
+          <button
+            type="button"
+            className="options-trigger"
+            onClick={() => setDrawerOpen(true)}
+            aria-haspopup="dialog"
+            aria-label="Filtres"
+          >
+            ⋮
+          </button>
         )}
       </div>
+
+      <OptionsDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title="Filtres"
+        filters={
+          <button
+            type="button"
+            className={`filter-toggle${hideMastered ? ' active' : ''}`}
+            aria-pressed={hideMastered}
+            onClick={() => setHideMastered((v) => !v)}
+          >
+            <span className="filter-toggle-check" aria-hidden="true" />
+            Masquer les lignes déjà mémorisées
+          </button>
+        }
+      />
 
       {isAssociation ? (
         pairs.length === 0 ? (
@@ -145,34 +154,6 @@ export default function CardView() {
       )}
 
       {actionError && <p className="error">{actionError}</p>}
-
-      {showMasteryUi && masteredCount > 0 && (
-        <div className="view-fab-container" ref={fabRef}>
-          {fabOpen && (
-            <div className="view-fab-menu" role="menu">
-              <button
-                type="button"
-                className={`filter-toggle${hideMastered ? ' active' : ''}`}
-                aria-pressed={hideMastered}
-                onClick={() => setHideMastered((v) => !v)}
-              >
-                <span className="filter-toggle-check" aria-hidden="true" />
-                Masquer les lignes déjà mémorisées
-              </button>
-            </div>
-          )}
-          <button
-            type="button"
-            className="view-fab"
-            onClick={() => setFabOpen((v) => !v)}
-            aria-haspopup="menu"
-            aria-expanded={fabOpen}
-            aria-label="Options d'affichage"
-          >
-            👁️
-          </button>
-        </div>
-      )}
     </div>
   );
 }
