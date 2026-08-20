@@ -299,13 +299,6 @@ button:disabled {
   font-size: 0.9rem;
 }
 
-.filter-toggle-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-bottom: 1.25rem;
-}
-
 .filter-toggle {
   display: inline-flex;
   align-items: center;
@@ -626,25 +619,6 @@ button:disabled {
 .badge-cardstatus-deleted {
   background: var(--red-soft);
   color: var(--red);
-}
-
-.status-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  margin: 0.75rem 0 1.25rem;
-}
-
-.status-actions button {
-  margin-top: 0;
-  background: var(--bg-alt);
-  color: var(--fg);
-  box-shadow: none;
-}
-
-.status-actions .error {
-  margin: 0;
 }
 
 .status-action-subtle {

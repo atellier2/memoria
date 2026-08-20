@@ -53,13 +53,16 @@ export default function CardPage() {
       setLoading(true);
       setError(null);
       try {
-        const { data, error } = await supabase.from('cards').select('*').eq('id', id).single();
+        // `maybeSingle` : une carte inexistante — ou masquée par les règles de
+        // lecture — n'est pas une erreur technique à afficher telle quelle,
+        // c'est une carte introuvable.
+        const { data, error } = await supabase.from('cards').select('*').eq('id', id).maybeSingle();
         if (cancelled) return;
         if (error) {
           setError(error.message);
           return;
         }
-        setCard(data as Card);
+        setCard(data as Card | null);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Erreur réseau.');
       } finally {
@@ -102,7 +105,9 @@ export default function CardPage() {
   // Le mélange est ouvert aux visiteurs non connectés, la modération non : on
   // conditionne chaque action plutôt que la section entière.
   const canRestore = Boolean(user) && canModerate && card.status === 'deleted';
-  const canReport = Boolean(user) && card.status !== 'signalee';
+  // Signaler ne vaut que pour une carte normale : la base refuse le reste
+  // (une carte supprimée ne se remet pas en circulation par un signalement).
+  const canReport = Boolean(user) && card.status === 'normal';
   const showActions = viewOptions.canShuffle || canRestore || canReport;
 
   return (

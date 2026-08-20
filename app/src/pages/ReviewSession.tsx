@@ -231,11 +231,20 @@ export default function ReviewSession() {
       if (remainingCount === 0) {
         // Tout est déjà mémorisé : on oublie la progression pour tout reproposer.
         setResetting(true);
+        setActionError(null);
         if (user) {
-          try {
-            await supabase.from('pair_progress').delete().eq('user_id', user.id).eq('card_id', card.id);
-          } catch {
-            // On réinitialise localement même si la suppression réseau échoue.
+          const { error } = await supabase
+            .from('pair_progress')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('card_id', card.id);
+          if (error) {
+            // Sans effacement en base, un rechargement ferait revenir les
+            // lignes mémorisées : on le dit plutôt que de repartir sur un
+            // état local qui ment.
+            setActionError(error.message);
+            setResetting(false);
+            return;
           }
         }
         setResetting(false);

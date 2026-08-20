@@ -109,13 +109,20 @@ export default function CardView() {
         ) : (
           <table className="view-table">
             <tbody>
-              {visiblePairs.map((pair) => {
+              {visiblePairs.map((pair, i) => {
                 const mastered = masteredKeys.has(pair.key);
                 const rowClass = [user ? 'view-table-row-clickable' : '', mastered ? 'view-table-row-mastered' : '']
                   .filter(Boolean)
                   .join(' ');
                 return (
-                  <tr key={pair.key} className={rowClass} onClick={user ? () => toggleMastered(pair.key) : undefined}>
+                  // Deux lignes identiques partagent la même clé de
+                  // mémorisation : on y ajoute la position pour que React
+                  // garde des clés distinctes.
+                  <tr
+                    key={`${pair.key}#${i}`}
+                    className={rowClass}
+                    onClick={user ? () => toggleMastered(pair.key) : undefined}
+                  >
                     <td>{pair.front}</td>
                     <td>{pair.back}</td>
                   </tr>

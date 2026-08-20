@@ -22,13 +22,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    // `settled` : le listener livre déjà la session initiale, et peut en livrer
+    // une plus fraîche (retour de lien magique) avant que getSession ne
+    // réponde — sa réponse tardive ne doit pas écraser ce qu'on sait déjà.
+    let settled = false;
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!settled) setSession(data.session);
+      })
+      .catch(() => {
+        // Session illisible (réseau, stockage bloqué) : on continue en
+        // visiteur plutôt que de rester en chargement perpétuel.
+      })
+      .finally(() => setLoading(false));
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      settled = true;
       setSession(newSession);
+      setLoading(false);
     });
 
     return () => listener.subscription.unsubscribe();

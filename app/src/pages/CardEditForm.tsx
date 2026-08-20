@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { CardRevision, Visibility } from '../types';
@@ -19,35 +19,40 @@ export default function CardEditForm() {
 
   const [revisions, setRevisions] = useState<CardRevision[]>([]);
   const [revisionsLoading, setRevisionsLoading] = useState(true);
+  const [revisionsError, setRevisionsError] = useState<string | null>(null);
+
+  const fetchRevisions = useCallback(
+    () =>
+      supabase.from('card_revisions').select('*').eq('card_id', card.id).order('edited_at', { ascending: false }),
+    [card.id],
+  );
 
   useEffect(() => {
     let cancelled = false;
     async function loadRevisions() {
       setRevisionsLoading(true);
-      try {
-        const { data } = await supabase
-          .from('card_revisions')
-          .select('*')
-          .eq('card_id', card.id)
-          .order('edited_at', { ascending: false });
-        if (!cancelled && data) setRevisions(data);
-      } finally {
-        if (!cancelled) setRevisionsLoading(false);
-      }
+      setRevisionsError(null);
+      const { data, error } = await fetchRevisions();
+      if (cancelled) return;
+      // Un historique illisible n'est pas un historique vide : on le dit,
+      // sinon l'écran affirme qu'aucune modification n'a été archivée.
+      if (error) setRevisionsError(error.message);
+      else setRevisions(data ?? []);
+      setRevisionsLoading(false);
     }
     loadRevisions();
     return () => {
       cancelled = true;
     };
-  }, [card.id]);
+  }, [fetchRevisions]);
 
   async function refreshRevisions() {
-    const { data } = await supabase
-      .from('card_revisions')
-      .select('*')
-      .eq('card_id', card.id)
-      .order('edited_at', { ascending: false });
-    if (data) setRevisions(data);
+    const { data, error } = await fetchRevisions();
+    if (error) setRevisionsError(error.message);
+    else {
+      setRevisionsError(null);
+      setRevisions(data ?? []);
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -187,7 +192,10 @@ export default function CardEditForm() {
       <div className="panel">
         <h3>Historique</h3>
         {revisionsLoading && <p>Chargement…</p>}
-        {!revisionsLoading && revisions.length === 0 && <p>Aucune modification archivée pour l'instant.</p>}
+        {revisionsError && <p className="error">{revisionsError}</p>}
+        {!revisionsLoading && !revisionsError && revisions.length === 0 && (
+          <p>Aucune modification archivée pour l'instant.</p>
+        )}
         <ul className="revision-list">
           {revisions.map((rev) => (
             <li key={rev.id}>
