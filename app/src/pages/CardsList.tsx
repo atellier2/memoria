@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Card, CardType, Progress } from '../types';
 import { useAuth } from '../context/AuthContext';
+import OptionsDrawer from '../components/OptionsDrawer';
 
 type TypeFilter = 'all' | CardType;
 
@@ -15,6 +16,7 @@ export default function CardsList() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [onlyInProgress, setOnlyInProgress] = useState(false);
   const [hideDeleted, setHideDeleted] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,51 +84,69 @@ export default function CardsList() {
   return (
     <div>
       <h2>Cartes</h2>
-      <div className="mode-tabs" role="group" aria-label="Filtrer par type">
-        <button
-          type="button"
-          className={typeFilter === 'all' ? 'active' : ''}
-          onClick={() => setTypeFilter('all')}
-        >
-          Toutes
-        </button>
-        <button
-          type="button"
-          className={typeFilter === 'association' ? 'active' : ''}
-          onClick={() => setTypeFilter('association')}
-        >
-          Association
-        </button>
-        <button
-          type="button"
-          className={typeFilter === 'recitation' ? 'active' : ''}
-          onClick={() => setTypeFilter('recitation')}
-        >
-          Récitation
-        </button>
-      </div>
-      {user && (
-        <div className="filter-toggle-group">
+      <div className="mode-tabs-row">
+        <div className="mode-tabs" role="group" aria-label="Filtrer par type">
           <button
             type="button"
-            className={`filter-toggle${onlyInProgress ? ' active' : ''}`}
-            aria-pressed={onlyInProgress}
-            onClick={() => setOnlyInProgress((v) => !v)}
+            className={typeFilter === 'all' ? 'active' : ''}
+            onClick={() => setTypeFilter('all')}
           >
-            <span className="filter-toggle-check" aria-hidden="true" />
-            Cartes en cours d'étude uniquement
+            Toutes
           </button>
           <button
             type="button"
-            className={`filter-toggle${hideDeleted ? ' active' : ''}`}
-            aria-pressed={hideDeleted}
-            onClick={() => setHideDeleted((v) => !v)}
+            className={typeFilter === 'association' ? 'active' : ''}
+            onClick={() => setTypeFilter('association')}
           >
-            <span className="filter-toggle-check" aria-hidden="true" />
-            Cartes supprimées masquées
+            Association
+          </button>
+          <button
+            type="button"
+            className={typeFilter === 'recitation' ? 'active' : ''}
+            onClick={() => setTypeFilter('recitation')}
+          >
+            Récitation
           </button>
         </div>
-      )}
+        {user && (
+          <button
+            type="button"
+            className="options-trigger"
+            onClick={() => setDrawerOpen(true)}
+            aria-haspopup="dialog"
+            aria-label="Filtres"
+          >
+            ⋮
+          </button>
+        )}
+      </div>
+      <OptionsDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title="Filtres"
+        filters={
+          <>
+            <button
+              type="button"
+              className={`filter-toggle${onlyInProgress ? ' active' : ''}`}
+              aria-pressed={onlyInProgress}
+              onClick={() => setOnlyInProgress((v) => !v)}
+            >
+              <span className="filter-toggle-check" aria-hidden="true" />
+              Cartes en cours d'étude uniquement
+            </button>
+            <button
+              type="button"
+              className={`filter-toggle${hideDeleted ? ' active' : ''}`}
+              aria-pressed={hideDeleted}
+              onClick={() => setHideDeleted((v) => !v)}
+            >
+              <span className="filter-toggle-check" aria-hidden="true" />
+              Cartes supprimées masquées
+            </button>
+          </>
+        }
+      />
       {filteredCards.length === 0 && (
         <p>
           {cards.length === 0

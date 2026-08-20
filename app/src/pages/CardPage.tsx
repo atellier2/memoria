@@ -3,6 +3,7 @@ import { NavLink, Outlet, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Card, CardStatus } from '../types';
 import { useAuth } from '../context/AuthContext';
+import OptionsDrawer from '../components/OptionsDrawer';
 
 export interface CardOutletContext {
   card: Card;
@@ -27,6 +28,7 @@ export default function CardPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,33 +90,51 @@ export default function CardPage() {
           <span className={`badge badge-cardstatus-${card.status}`}>{STATUS_LABELS[card.status]}</span>
         </div>
       )}
-      <nav className="mode-tabs">
-        <NavLink to={`/cards/${card.id}`} end>
-          👁️ Visualiser
-        </NavLink>
-        {user && <NavLink to={`/cards/${card.id}/edit`}>✏️ Éditer</NavLink>}
-        <NavLink to={`/cards/${card.id}/review`}>🎯 Réviser</NavLink>
-      </nav>
-      {user && (
-        <div className="status-actions">
-          {canModerate && card.status === 'deleted' && (
-            <button type="button" onClick={() => changeStatus('normal')} disabled={statusSaving}>
-              ♻️ Restaurer
-            </button>
-          )}
-          {card.status !== 'signalee' && (
-            <button
-              type="button"
-              className="status-action-subtle"
-              onClick={() => changeStatus('signalee')}
-              disabled={statusSaving}
-            >
-              🚩 Signaler
-            </button>
-          )}
-          {statusError && <p className="error">{statusError}</p>}
-        </div>
-      )}
+      <div className="mode-tabs-row">
+        <nav className="mode-tabs">
+          <NavLink to={`/cards/${card.id}`} end>
+            👁️ Visualiser
+          </NavLink>
+          {user && <NavLink to={`/cards/${card.id}/edit`}>✏️ Éditer</NavLink>}
+          <NavLink to={`/cards/${card.id}/review`}>🎯 Réviser</NavLink>
+        </nav>
+        {user && (
+          <button
+            type="button"
+            className="options-trigger"
+            onClick={() => setDrawerOpen(true)}
+            aria-haspopup="dialog"
+            aria-label="Actions"
+          >
+            ⋮
+          </button>
+        )}
+      </div>
+      <OptionsDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title="Actions"
+        actions={
+          <>
+            {canModerate && card.status === 'deleted' && (
+              <button type="button" onClick={() => changeStatus('normal')} disabled={statusSaving}>
+                ♻️ Restaurer
+              </button>
+            )}
+            {card.status !== 'signalee' && (
+              <button
+                type="button"
+                className="status-action-subtle"
+                onClick={() => changeStatus('signalee')}
+                disabled={statusSaving}
+              >
+                🚩 Signaler
+              </button>
+            )}
+            {statusError && <p className="error">{statusError}</p>}
+          </>
+        }
+      />
       <Outlet
         context={
           {
