@@ -460,6 +460,11 @@ button:disabled {
   color: white;
 }
 
+.badge-mastered-count {
+  background: var(--green);
+  color: white;
+}
+
 .badge-status-en_cours {
   background: var(--amber);
   color: white;
@@ -595,6 +600,60 @@ button:disabled {
 .view-text p {
   margin: 0.6rem 0;
   line-height: 1.6;
+}
+
+.view-table-row-clickable {
+  cursor: pointer;
+}
+
+.view-table-row-mastered td {
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: var(--bg);
+}
+
+.view-table-row-mastered td:first-child {
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.view-fab-container {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 30;
+}
+
+.view-fab {
+  margin: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  box-shadow: var(--shadow-md);
+  border: none;
+}
+
+.view-fab-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.75rem);
+  background: var(--panel-bg);
+  border-radius: 0.9rem;
+  box-shadow: var(--shadow-md);
+  padding: 0.6rem;
+  min-width: 260px;
+}
+
+.view-fab-menu .filter-toggle {
+  width: 100%;
 }
 
 .deck-piles {
