@@ -156,12 +156,11 @@ export default function CardPage() {
               {viewOptions.canShuffle && (
                 <button
                   type="button"
-                  className={`filter-toggle${shuffleLines ? ' active' : ''}`}
+                  className={`filter-toggle filter-toggle-plain${shuffleLines ? ' active' : ''}`}
                   aria-pressed={shuffleLines}
                   onClick={() => setShuffleLines(!shuffleLines)}
                 >
-                  <span className="filter-toggle-check" aria-hidden="true" />
-                  Mélanger les lignes
+                  🔀 Mélanger les lignes
                 </button>
               )}
             </>
