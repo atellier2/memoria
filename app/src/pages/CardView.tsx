@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import type { CardOutletContext } from './CardPage';
-import { parseAssociation, parseRecitation, pairLineKey } from '../lib/parseContent';
+import { parseAssociation, parseRecitation, pairLineKey, shuffle } from '../lib/parseContent';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import OptionsDrawer from '../components/OptionsDrawer';
 
 export default function CardView() {
-  const { card } = useOutletContext<CardOutletContext>();
+  const { card, hideMastered, shuffleLines, setViewOptions } = useOutletContext<CardOutletContext>();
   const { user, loading: authLoading } = useAuth();
   const isAssociation = card.type === 'association';
 
@@ -19,8 +18,6 @@ export default function CardView() {
 
   const [masteredKeys, setMasteredKeys] = useState<Set<string>>(new Set());
   const [masteryLoaded, setMasteryLoaded] = useState(false);
-  const [hideMastered, setHideMastered] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,7 +73,21 @@ export default function CardView() {
   const masteredCount = pairs.filter((p) => masteredKeys.has(p.key)).length;
   const remainingCount = pairs.length - masteredCount;
   const showMasteryUi = user && isAssociation && masteryLoaded && pairs.length > 0;
-  const visiblePairs = hideMastered ? pairs.filter((p) => !masteredKeys.has(p.key)) : pairs;
+
+  // Mémoïsé pour que l'ordre reste stable entre deux rendus : sans ça, chaque
+  // clic sur une ligne rebattrait les cartes. Réactiver le mélange recalcule
+  // le memo, et donne donc un nouvel ordre.
+  const orderedPairs = useMemo(() => (shuffleLines ? shuffle(pairs) : pairs), [shuffleLines, pairs]);
+  const visiblePairs = hideMastered ? orderedPairs.filter((p) => !masteredKeys.has(p.key)) : orderedPairs;
+
+  // Les toggles vivent dans le drawer de CardPage : on lui signale seulement
+  // lesquels s'appliquent ici, et on les retire en quittant cet onglet.
+  const canHideMastered = Boolean(showMasteryUi && masteredCount > 0);
+  const canShuffle = isAssociation && pairs.length > 1;
+  useEffect(() => {
+    setViewOptions({ canHideMastered, canShuffle });
+    return () => setViewOptions({ canHideMastered: false, canShuffle: false });
+  }, [canHideMastered, canShuffle, setViewOptions]);
 
   return (
     <div className="panel">
@@ -91,35 +102,6 @@ export default function CardView() {
           </>
         )}
       </div>
-
-      {showMasteryUi && masteredCount > 0 && (
-        <button
-          type="button"
-          className="options-trigger options-trigger-floating"
-          onClick={() => setDrawerOpen(true)}
-          aria-haspopup="dialog"
-          aria-label="Filtres"
-        >
-          ⋮
-        </button>
-      )}
-
-      <OptionsDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        title="Filtres"
-        filters={
-          <button
-            type="button"
-            className={`filter-toggle${hideMastered ? ' active' : ''}`}
-            aria-pressed={hideMastered}
-            onClick={() => setHideMastered((v) => !v)}
-          >
-            <span className="filter-toggle-check" aria-hidden="true" />
-            Masquer les lignes déjà mémorisées
-          </button>
-        }
-      />
 
       {isAssociation ? (
         pairs.length === 0 ? (

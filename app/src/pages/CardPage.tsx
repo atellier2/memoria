@@ -11,7 +11,21 @@ export interface CardOutletContext {
   onDeleteCard: () => void;
   deletingCard: boolean;
   canDelete: boolean;
+  // Les options d'affichage de CardView vivent dans le drawer de cette page :
+  // CardView signale lesquelles s'appliquent et lit leur état, mais ne rend
+  // plus son propre menu.
+  hideMastered: boolean;
+  setHideMastered: (value: boolean) => void;
+  shuffleLines: boolean;
+  setViewOptions: (options: ViewOptions) => void;
 }
+
+export interface ViewOptions {
+  canHideMastered: boolean;
+  canShuffle: boolean;
+}
+
+const NO_VIEW_OPTIONS: ViewOptions = { canHideMastered: false, canShuffle: false };
 
 const STATUS_LABELS: Record<CardStatus, string> = {
   normal: 'Normale',
@@ -29,6 +43,9 @@ export default function CardPage() {
   const [statusError, setStatusError] = useState<string | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [hideMastered, setHideMastered] = useState(false);
+  const [shuffleLines, setShuffleLines] = useState(false);
+  const [viewOptions, setViewOptions] = useState<ViewOptions>(NO_VIEW_OPTIONS);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,6 +99,10 @@ export default function CardPage() {
   if (error) return <p className="error">{error}</p>;
   if (!card) return <p>Carte introuvable.</p>;
 
+  const canRestore = canModerate && card.status === 'deleted';
+  const canReport = card.status !== 'signalee';
+  const showActions = Boolean(user) && (canRestore || canReport);
+
   return (
     <div>
       <h2>{card.title}</h2>
@@ -90,49 +111,83 @@ export default function CardPage() {
           <span className={`badge badge-cardstatus-${card.status}`}>{STATUS_LABELS[card.status]}</span>
         </div>
       )}
-      <div className="mode-tabs-row">
-        <nav className="mode-tabs">
-          <NavLink to={`/cards/${card.id}`} end>
-            👁️ Visualiser
-          </NavLink>
-          {user && <NavLink to={`/cards/${card.id}/edit`}>✏️ Éditer</NavLink>}
-          <NavLink to={`/cards/${card.id}/review`}>🎯 Réviser</NavLink>
-        </nav>
-        {user && (
-          <button
-            type="button"
-            className="options-trigger"
-            onClick={() => setDrawerOpen(true)}
-            aria-haspopup="dialog"
-            aria-label="Actions"
-          >
-            ⋮
-          </button>
-        )}
-      </div>
+      <button
+        type="button"
+        className="options-trigger options-trigger-floating"
+        onClick={() => setDrawerOpen(true)}
+        aria-haspopup="dialog"
+        aria-label="Options"
+      >
+        ⋮
+      </button>
       <OptionsDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        title="Actions"
+        title="Options"
+        navigation={
+          <nav className="mode-tabs mode-tabs-vertical">
+            <NavLink to={`/cards/${card.id}`} end onClick={() => setDrawerOpen(false)}>
+              👁️ Visualiser
+            </NavLink>
+            {user && (
+              <NavLink to={`/cards/${card.id}/edit`} onClick={() => setDrawerOpen(false)}>
+                ✏️ Éditer
+              </NavLink>
+            )}
+            <NavLink to={`/cards/${card.id}/review`} onClick={() => setDrawerOpen(false)}>
+              🎯 Réviser
+            </NavLink>
+          </nav>
+        }
+        filters={
+          viewOptions.canHideMastered || viewOptions.canShuffle ? (
+            <>
+              {viewOptions.canHideMastered && (
+                <button
+                  type="button"
+                  className={`filter-toggle${hideMastered ? ' active' : ''}`}
+                  aria-pressed={hideMastered}
+                  onClick={() => setHideMastered(!hideMastered)}
+                >
+                  <span className="filter-toggle-check" aria-hidden="true" />
+                  Masquer les lignes déjà mémorisées
+                </button>
+              )}
+              {viewOptions.canShuffle && (
+                <button
+                  type="button"
+                  className={`filter-toggle${shuffleLines ? ' active' : ''}`}
+                  aria-pressed={shuffleLines}
+                  onClick={() => setShuffleLines(!shuffleLines)}
+                >
+                  <span className="filter-toggle-check" aria-hidden="true" />
+                  Mélanger les lignes
+                </button>
+              )}
+            </>
+          ) : undefined
+        }
         actions={
-          <>
-            {canModerate && card.status === 'deleted' && (
-              <button type="button" onClick={() => changeStatus('normal')} disabled={statusSaving}>
-                ♻️ Restaurer
-              </button>
-            )}
-            {card.status !== 'signalee' && (
-              <button
-                type="button"
-                className="status-action-subtle"
-                onClick={() => changeStatus('signalee')}
-                disabled={statusSaving}
-              >
-                🚩 Signaler
-              </button>
-            )}
-            {statusError && <p className="error">{statusError}</p>}
-          </>
+          showActions ? (
+            <>
+              {canRestore && (
+                <button type="button" onClick={() => changeStatus('normal')} disabled={statusSaving}>
+                  ♻️ Restaurer
+                </button>
+              )}
+              {canReport && (
+                <button
+                  type="button"
+                  className="status-action-subtle"
+                  onClick={() => changeStatus('signalee')}
+                  disabled={statusSaving}
+                >
+                  🚩 Signaler
+                </button>
+              )}
+              {statusError && <p className="error">{statusError}</p>}
+            </>
+          ) : undefined
         }
       />
       <Outlet
@@ -143,6 +198,10 @@ export default function CardPage() {
             onDeleteCard: () => changeStatus('deleted'),
             deletingCard: statusSaving,
             canDelete: canModerate,
+            hideMastered,
+            setHideMastered,
+            shuffleLines,
+            setViewOptions,
           } satisfies CardOutletContext
         }
       />

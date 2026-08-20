@@ -4,11 +4,19 @@ interface OptionsDrawerProps {
   open: boolean;
   onClose: () => void;
   title?: string;
+  navigation?: ReactNode;
   filters?: ReactNode;
   actions?: ReactNode;
 }
 
-export default function OptionsDrawer({ open, onClose, title = 'Options', filters, actions }: OptionsDrawerProps) {
+export default function OptionsDrawer({
+  open,
+  onClose,
+  title = 'Options',
+  navigation,
+  filters,
+  actions,
+}: OptionsDrawerProps) {
   useEffect(() => {
     if (!open) return;
 
@@ -35,6 +43,12 @@ export default function OptionsDrawer({ open, onClose, title = 'Options', filter
             ✕
           </button>
         </div>
+        {navigation && (
+          <div className="drawer-section">
+            <div className="drawer-section-label">Navigation</div>
+            <div className="drawer-section-content">{navigation}</div>
+          </div>
+        )}
         {filters && (
           <div className="drawer-section">
             <div className="drawer-section-label">Filtres</div>
